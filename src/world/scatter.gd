@@ -21,7 +21,12 @@ class_name Scatter
 @export var area_radius: float = 168.0
 @export var center_clear_radius: float = 14.0
 @export var market_count: int = 5
-@export var wall_height_scale: float = 1.9
+## Escala dos edifícios. Medido: a porta do Building4 tem 0,91 m (menos que a
+## metade do personagem, de 1,85 m). 2.64x deixa a porta com ~2,4 m — bem maior
+## que o personagem, dando a sensação de edifício imponente.
+@export var building_scale: float = 2.64
+@export var tower_scale: float = 2.2
+@export var wall_height_scale: float = 3.9
 
 var _terrain: Terrain
 var _rng := RandomNumberGenerator.new()
@@ -162,13 +167,13 @@ func _first_mesh(node: Node) -> MeshInstance3D:
 
 
 func _scatter_nature() -> void:
-	_nature_multimesh(_tree, tree_count, 0.9, 1.6, 0.4, 2.6)
-	_nature_multimesh(_tree2, tree_count / 2, 0.9, 1.5, 0.35, 2.2)
-	_nature_multimesh(_bush, bush_count, 0.8, 1.5, 0.5, 0.8)
-	_nature_multimesh(_rock, rock_count, 0.6, 1.6, 0.7, 1.0)
-	_nature_multimesh(_flower, flower_count, 0.9, 1.4, 0.25, 0.4)
-	_nature_multimesh(_mushroom, mushroom_count, 0.9, 1.4, 0.25, 0.4)
-	_nature_multimesh(_crystal, crystal_count, 0.8, 1.4, 0.35, 1.2)
+	_nature_multimesh(_tree, tree_count, 1.3, 2.2, 0.55, 3.8)
+	_nature_multimesh(_tree2, tree_count / 2, 1.3, 2.0, 0.5, 3.2)
+	_nature_multimesh(_bush, bush_count, 1.2, 2.0, 0.6, 1.0)
+	_nature_multimesh(_rock, rock_count, 1.0, 2.4, 0.8, 1.2)
+	_nature_multimesh(_flower, flower_count, 1.2, 1.8, 0.3, 0.5)
+	_nature_multimesh(_mushroom, mushroom_count, 1.2, 1.8, 0.3, 0.5)
+	_nature_multimesh(_crystal, crystal_count, 1.2, 2.0, 0.4, 1.4)
 
 
 # ----------------------------------------------------------------------------
@@ -217,37 +222,37 @@ func _build_village() -> void:
 	var c := _terrain.village_center
 	print("VILLAGE center=", c)
 
-	_place(_well, Vector3(c.x, _ground(c.x, c.y), c.y), 1.8, 0.0)
+	_place(_well, Vector3(c.x, _ground(c.x, c.y), c.y), 1.8 * building_scale * 0.5, 0.0)
 	for i in range(4):
 		var a := float(i) / 4.0 * TAU
-		var bx := c.x + cos(a) * 8.0
-		var bz := c.y + sin(a) * 8.0
-		_place(_banner, Vector3(bx, _ground(bx, bz), bz), 3.0, a)
+		var bx := c.x + cos(a) * 12.0
+		var bz := c.y + sin(a) * 12.0
+		_place(_banner, Vector3(bx, _ground(bx, bz), bz), 3.0 * building_scale * 0.5, a)
 
 	var placed := 0
-	var spacing := 11.0
+	var spacing := 11.0 * building_scale * 0.6
 	for side in [-1, 1]:
 		for row in range(2):
 			for i in range(5):
-				var x := c.x - 26.0 + i * spacing
-				var z := c.y + float(side) * (6.0 + row * 13.0)
+				var x := c.x - 5.0 * spacing + i * spacing
+				var z := c.y + float(side) * (7.0 + row * 16.0) * building_scale * 0.55
 				var yaw := 0.0 if side < 0 else PI
 				var scn: PackedScene = _houses[placed % _houses.size()] if placed % 3 == 0 else _buildings[placed % _buildings.size()]
-				_place(scn, Vector3(x, _ground(x, z), z), _rng.randf_range(0.95, 1.1), yaw)
+				_place(scn, Vector3(x, _ground(x, z), z), building_scale * _rng.randf_range(0.95, 1.1), yaw)
 				placed += 1
 
 	for i in range(market_count):
 		var a := float(i) / float(market_count) * TAU + 0.4
-		var mx := c.x + cos(a) * 12.0
-		var mz := c.y + sin(a) * 12.0
-		_place(_market, Vector3(mx, _ground(mx, mz), mz), 1.0, atan2(c.x - mx, c.y - mz))
+		var mx := c.x + cos(a) * 16.0
+		var mz := c.y + sin(a) * 16.0
+		_place(_market, Vector3(mx, _ground(mx, mz), mz), building_scale * 0.6, atan2(c.x - mx, c.y - mz))
 
-	var half := 42.0
+	var half := 70.0
 	for sx in [-1, 1]:
 		for sz in [-1, 1]:
 			var tx: float = c.x + float(sx) * half
 			var tz: float = c.y + float(sz) * half
-			_place(_towers[0], Vector3(tx, _ground(tx, tz), tz), 2.2, 0.0)
+			_place(_towers[0], Vector3(tx, _ground(tx, tz), tz), tower_scale, 0.0)
 
 	_build_wall(c, half)
 	print("VILLAGE houses=", placed, " markets=", market_count)

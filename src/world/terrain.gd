@@ -16,7 +16,7 @@ class_name Terrain
 @export var seed: int = 20261104
 @export var bedrock_depth: float = 60.0
 @export var village_center: Vector2 = Vector2(60.0, -60.0)
-@export var village_radius: float = 42.0
+@export var village_radius: float = 62.0
 
 var _noise: FastNoiseLite
 
