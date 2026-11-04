@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="ArrayMesh" path="res://maps/world/shared/reeds_0.res" id="1_ebaj1"]
+
+[node name="Reeds0" type="MeshInstance3D" unique_id=719621293]
+cast_shadow = 0
+mesh = ExtResource("1_ebaj1")

@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="ArrayMesh" path="res://maps/world/shared/grass_1.res" id="1_p5sta"]
+
+[node name="Grass1" type="MeshInstance3D" unique_id=534285435]
+cast_shadow = 0
+mesh = ExtResource("1_p5sta")

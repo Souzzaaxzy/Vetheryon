@@ -1,0 +1,12 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://maps/world/tile_0_0.tscn" id="1_5ea13"]
+[ext_resource type="PackedScene" path="res://maps/world/map_edge.tscn" id="2_j43vt"]
+
+[node name="Map" type="Node3D" unique_id=436737897]
+
+[node name="Tile_0_0" type="Node3D" parent="." unique_id=436737899 instance=ExtResource("1_5ea13")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -256, 0, -256)
+
+[node name="MapEdge" type="Node3D" parent="." unique_id=436737901 instance=ExtResource("2_j43vt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -256, 0, -256)

@@ -1,6 +1,6 @@
 [gd_scene load_steps=10 format=3 uid="uid://bmainvethy0n"]
 
-[ext_resource type="Script" path="res://src/world/terrain.gd" id="1_terrain"]
+[ext_resource type="PackedScene" path="res://maps/world/map.tscn" id="1_map"]
 [ext_resource type="PackedScene" path="res://src/player/player.tscn" id="2_player"]
 [ext_resource type="Script" path="res://src/ui/touch_controls.gd" id="3_touch"]
 [ext_resource type="Script" path="res://src/ui/hud.gd" id="4_hud"]
@@ -25,7 +25,7 @@ tonemap_mode = 3
 tonemap_white = 4.0
 fog_enabled = true
 fog_light_color = Color(0.72, 0.78, 0.85, 1)
-fog_density = 0.0012
+fog_density = 0.0006
 
 [node name="Main" type="Node3D"]
 
@@ -37,15 +37,13 @@ transform = Transform3D(0.86, -0.35, 0.36, 0.0, 0.71, 0.7, -0.5, -0.6, 0.61, 0, 
 light_energy = 0.95
 shadow_enabled = false
 
-[node name="Terrain" type="Node3D" parent="."]
-script = ExtResource("1_terrain")
+[node name="World" parent="." instance=ExtResource("1_map")]
 
 [node name="Scatter" type="Node3D" parent="."]
 script = ExtResource("5_scatter")
-terrain_path = NodePath("../Terrain")
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 24, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 118, 10, 6)
 camera_rig_path = NodePath("../CameraRig")
 
 [node name="CameraRig" type="Node3D" parent="." groups=["camera_rig"]]

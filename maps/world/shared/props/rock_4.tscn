@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="ArrayMesh" path="res://maps/world/shared/rock_4.res" id="1_onx6p"]
+
+[sub_resource type="SphereShape3D" id="lf_1"]
+radius = 2.08
+
+[node name="Rock4" type="StaticBody3D" unique_id=629896429 groups=["rock"]]
+
+[node name="Mesh" type="MeshInstance3D" parent="." unique_id=629896431]
+mesh = ExtResource("1_onx6p")
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=629896433]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.936, 0)
+shape = SubResource("lf_1")

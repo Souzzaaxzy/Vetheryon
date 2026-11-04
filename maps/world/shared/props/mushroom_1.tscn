@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="ArrayMesh" path="res://maps/world/shared/mushroom_1.res" id="1_u8d4m"]
+
+[node name="Mushroom1" type="MeshInstance3D" unique_id=967893877]
+cast_shadow = 0
+mesh = ExtResource("1_u8d4m")
