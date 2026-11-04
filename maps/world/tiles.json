@@ -4,7 +4,7 @@
 		0,
 		0
 	],
-	"land": "12b4507a50e5609d2f7d3067570e9dbd",
+	"land": "8065f09e9cd6a40a5259a47f2cc87115",
 	"seed": 20261104,
 	"spawn": {
 		"position": [
@@ -12,31 +12,143 @@
 			6.40880393981934,
 			76.0
 		],
-		"scene": "tile_0_0.tscn",
+		"scene": "tile_1_1.tscn",
 		"tile": [
-			0,
-			0
+			1,
+			1
 		]
 	},
 	"tile_size": 512.0,
 	"tiles": [
 		{
 			"offset": [
+				-768.0,
+				0.0,
+				-768.0
+			],
+			"scene": "tile_0_0.tscn",
+			"world_origin": [
+				1152.0,
+				-2560.0
+			],
+			"x": 0,
+			"z": 0
+		},
+		{
+			"offset": [
+				-256.0,
+				0.0,
+				-768.0
+			],
+			"scene": "tile_1_0.tscn",
+			"world_origin": [
+				1664.0,
+				-2560.0
+			],
+			"x": 1,
+			"z": 0
+		},
+		{
+			"offset": [
+				256.0,
+				0.0,
+				-768.0
+			],
+			"scene": "tile_2_0.tscn",
+			"world_origin": [
+				2176.0,
+				-2560.0
+			],
+			"x": 2,
+			"z": 0
+		},
+		{
+			"offset": [
+				-768.0,
+				0.0,
+				-256.0
+			],
+			"scene": "tile_0_1.tscn",
+			"world_origin": [
+				1152.0,
+				-2048.0
+			],
+			"x": 0,
+			"z": 1
+		},
+		{
+			"offset": [
 				-256.0,
 				0.0,
 				-256.0
 			],
-			"scene": "tile_0_0.tscn",
+			"scene": "tile_1_1.tscn",
 			"world_origin": [
 				1664.0,
 				-2048.0
 			],
+			"x": 1,
+			"z": 1
+		},
+		{
+			"offset": [
+				256.0,
+				0.0,
+				-256.0
+			],
+			"scene": "tile_2_1.tscn",
+			"world_origin": [
+				2176.0,
+				-2048.0
+			],
+			"x": 2,
+			"z": 1
+		},
+		{
+			"offset": [
+				-768.0,
+				0.0,
+				256.0
+			],
+			"scene": "tile_0_2.tscn",
+			"world_origin": [
+				1152.0,
+				-1536.0
+			],
 			"x": 0,
-			"z": 0
+			"z": 2
+		},
+		{
+			"offset": [
+				-256.0,
+				0.0,
+				256.0
+			],
+			"scene": "tile_1_2.tscn",
+			"world_origin": [
+				1664.0,
+				-1536.0
+			],
+			"x": 1,
+			"z": 2
+		},
+		{
+			"offset": [
+				256.0,
+				0.0,
+				256.0
+			],
+			"scene": "tile_2_2.tscn",
+			"world_origin": [
+				2176.0,
+				-1536.0
+			],
+			"x": 2,
+			"z": 2
 		}
 	],
-	"tiles_x": 1,
-	"tiles_z": 1,
+	"tiles_x": 3,
+	"tiles_z": 3,
 	"world_center": [
 		1920.0,
 		-1792.0
