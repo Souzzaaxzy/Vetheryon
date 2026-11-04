@@ -132,3 +132,6 @@ func apply_look(relative: Vector2) -> void:
 func toggle_camera_mode() -> void:
 	if _camera_rig:
 		_camera_rig.toggle_mode()
+		# Em 1ª pessoa, esconde o modelo (senão a cabeça fica na frente da câmera).
+		if model:
+			model.visible = _camera_rig.mode != CameraRig.FIRST_PERSON

@@ -73,19 +73,39 @@ def tint_skin(basemesh, target_hex="#a9724d"):
         print("SKIN_TINT: nenhuma imagem de pele encontrada")
 
 
-def hide_body_under_clothes(basemesh, clothes_list):
-    """Remove do corpo os vértices que estão sob as roupas.
+def spread_clothes_outward(clothes_list, amount=0.035):
+    """Empurra cada peça de roupa um pouco para FORA, ao longo da sua normal.
 
-    Muitos modelos do MakeHuman (ex.: a regata) NÃO trazem "delete group", então
-    o corpo nu é renderizado junto da roupa -> parece um personagem duplicado.
-    Um MaskModifier resolveria no Blender, mas NÃO é exportado para glTF. Então
-    aqui deletamos de fato os vértices do corpo que ficam dentro do volume de
-    alguma peça de roupa (BVHTree), preservando os pesos de skinning.
+    As roupas do MakeHuman são ajustadas (fit) exatamente sobre a superfície do
+    corpo — ficam coplanares e o corpo "vence" o z-fighting, cobrindo a roupa.
+    Afastar a roupa garante que ela fique claramente por fora da pele.
+    """
+    import bmesh
+
+    for clothes in clothes_list:
+        if clothes is None:
+            continue
+        bm = bmesh.new()
+        bm.from_mesh(clothes.data)
+        bm.normal_update()
+        for v in bm.verts:
+            v.co += v.normal * amount
+        bm.to_mesh(clothes.data)
+        bm.free()
+        clothes.data.update()
+    print("SPREAD_CLOTHES", amount)
+
+
+def hide_body_under_clothes(basemesh, clothes_list):
+    """Esconde a pele sob as roupas ENCOLHENDO os vértices para dentro.
+
+    Deletar os vértices (como antes) abre BURACOS na malha: nas articulações
+    aparece o interior do corpo e dá para ver o mapa "através" do personagem.
+    Encolher mantém a malha fechada e a roupa (um pouco maior) cobre a pele.
     """
     import bmesh
     from mathutils.bvhtree import BVHTree
 
-    # 1. Marca os vértices do corpo que estão dentro de alguma roupa.
     hidden: set[int] = set()
     for clothes in clothes_list:
         if clothes is None:
@@ -98,26 +118,23 @@ def hide_body_under_clothes(basemesh, clothes_list):
 
         for v in basemesh.data.vertices:
             world_co = basemesh.matrix_world @ v.co
-            # Remove a pele que está na altura da roupa (dentro OU muito perto),
-            # para que a peça de roupa apareça em vez do corpo.
             hit = bvh.find_nearest(world_co, 0.06)
             if hit and hit[0] is not None:
                 hidden.add(v.index)
 
     if not hidden:
-        print("HIDDEN_UNDER_CLOTHES 0 (nada a remover)")
+        print("HIDE_UNDER_CLOTHES 0")
         return
 
-    # 2. Deleta esses vértices de verdade (bmesh preserva os vertex groups/pesos).
-    bm = bmesh.new()
-    bm.from_mesh(basemesh.data)
-    bm.verts.ensure_lookup_table()
-    to_delete = [bm.verts[i] for i in hidden if i < len(bm.verts)]
-    bmesh.ops.delete(bm, geom=to_delete, context="VERTS")
-    bm.to_mesh(basemesh.data)
-    bm.free()
+    # Encolhe para dentro ao longo da normal (malha continua fechada).
+    mw = basemesh.matrix_world
+    mw_inv = mw.inverted()
+    normals = [v.normal.copy() for v in basemesh.data.vertices]
+    for idx in hidden:
+        v = basemesh.data.vertices[idx]
+        v.co -= normals[idx] * 0.12
     basemesh.data.update()
-    print("HIDDEN_UNDER_CLOTHES", len(hidden), "vertices removidos do corpo")
+    print("HIDE_UNDER_CLOTHES", len(hidden), "vertices encolhidos para dentro")
 
 
 def force_opaque():
@@ -353,6 +370,9 @@ def build():
     if rig:
         add_animations(rig)
 
+    # Roupas afastadas para fora e pele encolhida sob elas.
+    spread_clothes_outward([shirt, shoes], 0.05)
+    spread_clothes_outward([pants], 0.09)
     hide_body_under_clothes(human, [shirt, pants, shoes])
     force_opaque()
 

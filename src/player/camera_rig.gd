@@ -74,8 +74,11 @@ func toggle_mode() -> void:
 
 func _apply_mode() -> void:
 	if mode == FIRST_PERSON:
+		# Câmera na altura dos olhos, um pouco à frente do rosto.
 		spring_arm.spring_length = 0.0
-		camera.position = Vector3(0, 0.0, 0)
+		camera.position = Vector3(0, 0.0, -0.14)
+		camera.near = 0.04
 	else:
 		spring_arm.spring_length = third_person_distance
 		camera.position = Vector3(0.55, 0.0, 0.0)
+		camera.near = 0.05

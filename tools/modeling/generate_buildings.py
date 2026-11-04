@@ -240,6 +240,56 @@ def make_well(seed=70):
     _export("well")
 
 
+def make_wall_segment(seed=50):
+    """Muro de pedra CONTÍNUO (não blocos soltos): fiadas de pedra encaixadas,
+    com base alargada e topo de ameias simples. Fica sólido e conectável."""
+    _reset()
+    random.seed(seed)
+    stone = _mat("Stone", STONE, 0.95)
+    stone2 = _mat("StoneDark", (0.36, 0.34, 0.32), 0.95)
+    parts = []
+    seg = 4.0        # comprimento do segmento (encaixa lado a lado)
+    h = 2.6
+    # Base alargada
+    parts.append(_box((0, 0, 0.25), (seg, 0.9, 0.5), stone2))
+    # Corpo do muro: fiadas de blocos encaixados (sem vãos)
+    rows = 4
+    row_h = (h - 0.5) / rows
+    for r in range(rows):
+        z = 0.5 + r * row_h + row_h / 2
+        offset = (r % 2) * 0.0  # mantém alinhado para não criar fendas
+        n = 5
+        bw = seg / n
+        for i in range(n):
+            x = -seg / 2 + bw / 2 + i * bw + offset
+            parts.append(_box((x, random.uniform(-0.02, 0.02), z), (bw * 0.99, 0.62, row_h * 0.98), stone))
+    # Ameias no topo
+    n = 4
+    bw = seg / n
+    for i in range(n):
+        if i % 2 == 0:
+            x = -seg / 2 + bw / 2 + i * bw
+            parts.append(_box((x, 0, h + 0.2), (bw * 0.7, 0.6, 0.45), stone2))
+    obj = _join(parts, "Wall")
+    _export("wall")
+
+
+def make_gate(seed=51):
+    """Portão de entrada da vila: dois pilares de pedra + arco de madeira."""
+    _reset()
+    random.seed(seed)
+    stone = _mat("Stone", STONE, 0.95)
+    wood = _mat("Wood", WOOD, 0.8)
+    parts = []
+    for sx in (-1, 1):
+        parts.append(_box((sx * 2.6, 0, 2.0), (1.2, 1.4, 4.0), stone))
+        parts.append(_box((sx * 2.6, 0, 4.3), (1.5, 1.7, 0.5), stone))
+    # viga superior
+    parts.append(_box((0, 0, 4.0), (6.6, 0.7, 0.5), wood))
+    obj = _join(parts, "Gate")
+    _export("gate")
+
+
 if __name__ == "__main__":
     make_house(1, 0)
     make_house(2, 1)
@@ -248,4 +298,6 @@ if __name__ == "__main__":
     make_market(80, 0)
     make_market(81, 1)
     make_well()
+    make_wall_segment()
+    make_gate()
     print("BUILDINGS_DONE")

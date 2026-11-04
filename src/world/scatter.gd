@@ -33,6 +33,7 @@ var _houses: Array[PackedScene] = []
 var _markets: Array[PackedScene] = []
 var _church: PackedScene
 var _well: PackedScene
+var _gate: PackedScene
 
 
 func _ready() -> void:
@@ -64,6 +65,7 @@ func _load_assets() -> void:
 			_markets.append(s)
 	_church = _try_load("res://assets/models/church.glb")
 	_well = _try_load("res://assets/models/well.glb")
+	_gate = _try_load("res://assets/models/gate.glb")
 
 
 func _try_load(path: String) -> PackedScene:
@@ -144,12 +146,17 @@ func _scatter_crystals() -> void:
 
 
 func _build_ruins() -> void:
+	# Ruínas como LINHAS contínuas de muro (não blocos soltos).
 	for _i in range(ruins_count):
 		var origin := _random_point()
-		for _w in range(_rng.randi_range(3, 6)):
-			var p := origin + Vector3(_rng.randf_range(-2.5, 2.5), 0, _rng.randf_range(-2.5, 2.5))
+		var ang := _rng.randf() * TAU
+		var seg := _rng.randi_range(3, 6)
+		var seg_len := 4.0
+		for k in range(seg):
+			var off := Vector3(cos(ang), 0, sin(ang)) * (k * seg_len)
+			var p := origin + off
 			p.y = _ground(p.x, p.z)
-			_place(_wall, p, Vector2(0.9, 1.3))
+			_place(_wall, p, Vector2(1.0, 1.0), -ang)
 
 
 # ----------------------------------------------------------------------------
@@ -208,6 +215,42 @@ func _build_village() -> void:
 
 	# 5. Estradas de terra batida (visual, deitadas sobre o terreno).
 	_build_roads(c)
+
+	# 6. Muralha contínua no perímetro, com portão virado para a rua principal.
+	_build_wall(c)
+
+
+func _build_wall(c: Vector2) -> void:
+	if _wall == null:
+		return
+	var seg_len := 4.0
+	var half := 40.0
+	var gate_side := 1  # portão no lado +X
+	var i := 0
+	# Lados ao longo de X (frente e trás)
+	for sx in [-1, 1]:
+		var x: float = c.x + sx * half
+		var n := int((2 * half) / seg_len)
+		for k in range(n):
+			var z: float = c.y - half + k * seg_len + seg_len * 0.5
+			# Deixa uma abertura no meio do lado do portão.
+			if sx == gate_side and abs(z - c.y) < 4.0:
+				continue
+			_place(_wall, Vector3(x, _ground(x, z), z), Vector2(1.0, 1.0), PI / 2)
+			i += 1
+	# Lados ao longo de Z (esquerda e direita)
+	for sz in [-1, 1]:
+		var z: float = c.y + sz * half
+		var n := int((2 * half) / seg_len)
+		for k in range(n):
+			var x: float = c.x - half + k * seg_len + seg_len * 0.5
+			_place(_wall, Vector3(x, _ground(x, z), z), Vector2(1.0, 1.0), 0.0)
+			i += 1
+	# Portão na abertura.
+	if _gate:
+		var gx := c.x + half
+		_place(_gate, Vector3(gx, _ground(gx, c.y), c.y), Vector2(1.0, 1.0), PI / 2)
+	print("VILLAGE wall_segments=", i)
 
 
 func _build_roads(c: Vector2) -> void:

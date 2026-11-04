@@ -31,8 +31,8 @@ def fix(path: str) -> None:
         if "alphaMode" in mat and mat["alphaMode"] != "OPAQUE":
             del mat["alphaMode"]
             changed += 1
-        # doubleSided ajuda a não ver "buracos" em roupas finas
-        mat["doubleSided"] = True
+        # doubleSided=False: senão dá para ver o interior/olhos através da malha.
+        mat["doubleSided"] = False
 
     new_json = json.dumps(js, separators=(",", ":")).encode("utf-8")
     pad = (4 - len(new_json) % 4) % 4
