@@ -46,6 +46,8 @@ var _wall_entrance: PackedScene
 var _well: PackedScene
 var _banner: PackedScene
 var _market: PackedScene
+var _road_dirt: PackedScene
+var _road_stone: PackedScene
 
 
 func _ready() -> void:
@@ -93,6 +95,8 @@ func _load_assets() -> void:
 	_wall_entrance = _try("res://assets/kit/WallEntrance.glb")
 	_well = _try("res://assets/kit/Well.glb")
 	_banner = _try("res://assets/kit/Banner.glb")
+	_road_dirt = _try("res://assets/roads/road_dirt_straight.glb")
+	_road_stone = _try("res://assets/roads/road_stone_straight.glb")
 
 
 func _ground(x: float, z: float) -> float:
@@ -231,6 +235,7 @@ func _build_village() -> void:
 
 	var placed := 0
 	var spacing := 11.0 * building_scale * 0.6
+	var house_positions: Array[Vector3] = []
 	for side in [-1, 1]:
 		for row in range(2):
 			for i in range(5):
@@ -239,6 +244,7 @@ func _build_village() -> void:
 				var yaw := 0.0 if side < 0 else PI
 				var scn: PackedScene = _houses[placed % _houses.size()] if placed % 3 == 0 else _buildings[placed % _buildings.size()]
 				_place(scn, Vector3(x, _ground(x, z), z), building_scale * _rng.randf_range(0.95, 1.1), yaw)
+				house_positions.append(Vector3(x, 0, z))
 				placed += 1
 
 	for i in range(market_count):
@@ -255,7 +261,70 @@ func _build_village() -> void:
 			_place(_towers[0], Vector3(tx, _ground(tx, tz), tz), tower_scale, 0.0)
 
 	_build_wall(c, half)
+	# Rede de caminhos: pedra das casas até a praça; terra da praça até o portão.
+	_build_roads(c, house_positions, Vector3(c.x + half, 0, c.y))
 	print("VILLAGE houses=", placed, " markets=", market_count)
+
+
+func _tile_multimesh(scene: PackedScene, transforms: Array[Transform3D]) -> void:
+	if scene == null or transforms.is_empty():
+		return
+	var model: Node3D = scene.instantiate()
+	var mi := _first_mesh(model)
+	if mi == null:
+		model.queue_free()
+		return
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mi.mesh
+	mm.instance_count = transforms.size()
+	for i in range(transforms.size()):
+		mm.set_instance_transform(i, transforms[i])
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mmi)
+	model.queue_free()
+
+
+## Laying tiles de 2 m ao longo de uma linha (leve desvio para parecer orgânico).
+func _lay_line(scene: PackedScene, out: Array[Transform3D], a: Vector3, b: Vector3) -> void:
+	if scene == null:
+		return
+	var tile := 2.0
+	var dist := a.distance_to(b)
+	var n := maxi(1, int(dist / tile))
+	var dir := (b - a).normalized()
+	var yaw := atan2(dir.x, dir.z)
+	for i in range(n):
+		var t := a + dir * ((i + 0.5) * tile)
+		var jitter := Vector3(_rng.randf_range(-0.15, 0.15), 0, _rng.randf_range(-0.15, 0.15))
+		var p := t + jitter
+		p.y = _ground(p.x, p.z) + 0.04
+		out.append(Transform3D(Basis(Vector3.UP, yaw), p))
+
+
+func _build_roads(c: Vector2, houses: Array[Vector3], gate: Vector3) -> void:
+	var stone_tiles: Array[Transform3D] = []
+	var dirt_tiles: Array[Transform3D] = []
+	var center := Vector3(c.x, 0, c.y)
+
+	# 1. Caminho de PEDRA de cada casa até o centro (a praça).
+	for h in houses:
+		_lay_line(_road_stone, stone_tiles, h, center)
+	# Praça central pavimentada (alguns tiles ao redor do poço).
+	for i in range(8):
+		var a := float(i) / 8.0 * TAU
+		var p := center + Vector3(cos(a), 0, sin(a)) * 3.0
+		p.y = _ground(p.x, p.z) + 0.04
+		stone_tiles.append(Transform3D(Basis(Vector3.UP, a), p))
+
+	# 2. Estrada de TERRA do centro até o portão principal.
+	_lay_line(_road_dirt, dirt_tiles, center, gate)
+
+	_tile_multimesh(_road_stone, stone_tiles)
+	_tile_multimesh(_road_dirt, dirt_tiles)
+	print("VILLAGE road_stone=", stone_tiles.size(), " road_dirt=", dirt_tiles.size())
 
 
 func _build_wall(c: Vector2, half: float) -> void:
