@@ -1,7 +1,9 @@
-"""Gera o personagem principal do Vetheryon: humano masculino realista, rigado e
-animado (idle, walk, run, jump), exportado como GLB para o Godot.
+"""Gera o personagem principal do Vetheryon: UM humano masculino, rigado e
+animado (idle, walk, run, jump), com as roupas também rigadas ao mesmo esqueleto.
 
-Usa MPFB2 (basemesh MakeHuman) + rig Mixamo + animações procedurais (keyframes).
+Corrige dois problemas da versão anterior:
+  1. gênero: agora masculino (gender=1.0), antes era 0.5 (andrógeno/feminino);
+  2. roupas rigadas: antes ficavam em A-pose (parecia "dois personagens").
 
     blender --background --python tools/modeling/generate_hero.py
 """
@@ -18,12 +20,6 @@ USER_DATA = "/workspace/tools/mpfb-userdata"
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, "..", "..", "assets", "character", "hero.glb"))
 
-FPS = 24
-
-
-# ----------------------------------------------------------------------------
-# MPFB helpers
-# ----------------------------------------------------------------------------
 
 def enable_mpfb():
     import addon_utils
@@ -97,7 +93,6 @@ def _clear_pose(rig):
 
 
 def make_idle(rig):
-    """Respiração sutil e leve balanço."""
     _clear_pose(rig)
     _new_action(rig, "Idle")
     frames = [1, 24, 48, 72, 96]
@@ -115,7 +110,6 @@ def make_idle(rig):
 
 
 def make_walk(rig):
-    """Caminhada: pernas alternadas, braços opostos."""
     _clear_pose(rig)
     _new_action(rig, "Walk")
     n = 32
@@ -123,19 +117,16 @@ def make_walk(rig):
         f = 1 + i
         phase = (i / n) * math.tau
         swing = math.sin(phase)
-        # pernas
         _key_rot(rig, "LeftUpLeg", f, (swing * 0.55, 0, 0))
         _key_rot(rig, "RightUpLeg", f, (-swing * 0.55, 0, 0))
         _key_rot(rig, "LeftLeg", f, (max(0, -swing) * 0.7, 0, 0))
         _key_rot(rig, "RightLeg", f, (max(0, swing) * 0.7, 0, 0))
         _key_rot(rig, "LeftFoot", f, (-swing * 0.25, 0, 0))
         _key_rot(rig, "RightFoot", f, (swing * 0.25, 0, 0))
-        # braços (opostos às pernas)
         _key_rot(rig, "LeftArm", f, (-swing * 0.45, 0, 0.08))
         _key_rot(rig, "RightArm", f, (swing * 0.45, 0, -0.08))
         _key_rot(rig, "LeftForeArm", f, (0.25 + max(0, -swing) * 0.3, 0, 0))
         _key_rot(rig, "RightForeArm", f, (0.25 + max(0, swing) * 0.3, 0, 0))
-        # tronco / quadril
         _key_rot(rig, "Spine", f, (0.04, 0, swing * 0.06))
         _key_rot(rig, "Hips", f, (0, 0, -swing * 0.08))
         _key_loc(rig, "Hips", f, (0, 0, abs(math.sin(phase)) * 0.03))
@@ -143,7 +134,6 @@ def make_walk(rig):
 
 
 def make_run(rig):
-    """Corrida: passos maiores, mais inclinação, braços dobrados."""
     _clear_pose(rig)
     _new_action(rig, "Run")
     n = 20
@@ -169,15 +159,14 @@ def make_run(rig):
 
 
 def make_jump(rig):
-    """Salto: agachar, impulsar, aterrissar."""
     _clear_pose(rig)
     _new_action(rig, "Jump")
     keys = [
         (1, 0.0, 0.0),
-        (6, -0.5, 0.12),    # agacha
-        (12, 0.35, -0.05),  # sobe
+        (6, -0.5, 0.12),
+        (12, 0.35, -0.05),
         (18, 0.15, 0.0),
-        (24, -0.35, 0.10),  # aterrissa
+        (24, -0.35, 0.10),
         (30, 0.0, 0.0),
     ]
     for f, leg, hips in keys:
@@ -193,16 +182,16 @@ def make_jump(rig):
 
 
 def add_animations(rig):
-    """Cria todas as ações e devolve os intervalos de frames (start, end)."""
-    ranges = {}
     for fn in (make_idle, make_walk, make_run, make_jump):
         name, end = fn(rig)
-        ranges[name] = (1, end)
-    return ranges
+        print("ANIM", name, "->", end)
+    # Volta para a pose neutra ao final.
+    _clear_pose(rig)
+    rig.animation_data.action = None
 
 
 # ----------------------------------------------------------------------------
-# montagem do personagem
+# montagem
 # ----------------------------------------------------------------------------
 
 def build():
@@ -210,24 +199,28 @@ def build():
     enable_mpfb()
 
     from bl_ext.user_default.mpfb.services.humanservice import HumanService
+    from bl_ext.user_default.mpfb.services.targetservice import TargetService
 
-    human = HumanService.create_human(feet_on_ground=True)
+    # Corpo MASCULINO: gender=1.0 (antes ficava 0.5 = andrógeno).
+    macro = TargetService.get_default_macro_info_dict()
+    macro["gender"] = 1.0
+    macro["muscle"] = 0.55
+    macro["weight"] = 0.5
+    macro["height"] = 0.5
+    macro["age"] = 0.35
+    macro["race"] = {"asian": 0.0, "caucasian": 0.15, "african": 0.85}
+
+    human = HumanService.create_human(feet_on_ground=True, macro_detail_dict=macro)
     print("HUMAN", human.name, len(human.data.vertices), "verts")
 
     skin = find_asset("middleage_african_male.mhmat", "skins")
     HumanService.set_character_skin(skin, human, skin_type="ENHANCED_SSS", material_instances=True)
 
-    eyes = find_asset("high-poly.mhclo", "eyes")
-    if eyes:
-        HumanService.add_mhclo_asset(eyes, human, asset_type="Eyes", material_type="MAKESKIN",
-                                     set_up_rigging=False, interpolate_weights=False,
-                                     import_subrig=False, import_weights=False)
-
-    # Rig Mixamo (compatível com animações do mercado).
+    # Rig Mixamo (antes das roupas, para que elas sejam rigadas ao anexar).
     rig = HumanService.add_builtin_rig(human, "mixamo", import_weights=True)
     print("RIG", rig.name if rig else None)
 
-    # Roupas MASCULINAS.
+    # Roupas MASCULINAS, agora RIGADAS ao esqueleto (set_up_rigging=True).
     def wear(fragment, label):
         path = find_asset(fragment)
         print("CLOTHES", label, path)
@@ -235,8 +228,8 @@ def build():
             return None
         return HumanService.add_mhclo_asset(
             path, human, asset_type="Clothes", subdiv_levels=1,
-            material_type="MAKESKIN", set_up_rigging=False,
-            interpolate_weights=False, import_subrig=False, import_weights=False)
+            material_type="MAKESKIN", set_up_rigging=True,
+            interpolate_weights=True, import_subrig=True, import_weights=True)
 
     shirt = wear("elvs_male_athletic_tank1.mhclo", "regata-masculina")
     pants = wear("punkduck_male_classic_jeans.mhclo", "calca-masculina")
@@ -249,10 +242,8 @@ def build():
     if shoes:
         recolor(shoes, (0.95, 0.95, 0.96))
 
-    # Animações.
     if rig:
-        ranges = add_animations(rig)
-        print("ANIM_RANGES", ranges)
+        add_animations(rig)
 
     return human, rig
 

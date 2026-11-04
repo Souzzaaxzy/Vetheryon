@@ -55,6 +55,11 @@ func _add_aerial_camera() -> void:
 	cam.environment = env
 	var main := get_node("/root/Main")
 	main.add_child(cam)
-	cam.global_position = Vector3(90, 120, 150)
-	cam.look_at(Vector3(0, 0, 0), Vector3.UP)
+	# Foca na vila (definida no Terrain).
+	var terrain := main.get_node_or_null("Terrain")
+	var vc := Vector3(60, 0, -60)
+	if terrain and "village_center" in terrain:
+		vc = Vector3(terrain.village_center.x, 0, terrain.village_center.y)
+	cam.global_position = vc + Vector3(14, 16, 16)
+	cam.look_at(vc + Vector3(0, 2, 0), Vector3.UP)
 	cam.current = true
