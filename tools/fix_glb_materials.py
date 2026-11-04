@@ -31,8 +31,15 @@ def fix(path: str) -> None:
         if "alphaMode" in mat and mat["alphaMode"] != "OPAQUE":
             del mat["alphaMode"]
             changed += 1
-        # doubleSided=False: senão dá para ver o interior/olhos através da malha.
         mat["doubleSided"] = False
+        # Corrige alpha 0 nos baseColorFactor (vem do FBX; deixa o material
+        # invisível no Godot quando alphaMode=MASK). Força alpha 1.
+        pbr = mat.get("pbrMetallicRoughness")
+        if pbr and "baseColorFactor" in pbr:
+            bc = pbr["baseColorFactor"]
+            if len(bc) == 4 and bc[3] < 0.5:
+                bc[3] = 1.0
+                changed += 1
 
     new_json = json.dumps(js, separators=(",", ":")).encode("utf-8")
     pad = (4 - len(new_json) % 4) % 4

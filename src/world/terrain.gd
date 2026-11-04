@@ -10,7 +10,7 @@ class_name Terrain
 ## Também há uma área reta (plateau) reservada para a vila.
 
 @export var size: float = 380.0
-@export var resolution: int = 380
+@export var resolution: int = 100
 @export var height_scale: float = 20.0
 @export var noise_frequency: float = 0.0038
 @export var seed: int = 20261104
@@ -141,36 +141,25 @@ func _add_bottom(verts: PackedVector3Array, normals: PackedVector3Array, colors:
 
 
 func _build_collision(resolution: int, step: float, half: float) -> void:
-	# Colisão por malha (ConcavePolygonShape3D) da superfície — sólida e exata.
-	var verts := PackedVector3Array()
-	for iz in range(resolution + 1):
-		for ix in range(resolution + 1):
-			var x := -half + ix * step
-			var z := -half + iz * step
-			verts.append(Vector3(x, height_at(x, z), z))
-	var row := resolution + 1
-	var faces := PackedVector3Array()
-	for iz in range(resolution):
-		for ix in range(resolution):
-			var a := iz * row + ix
-			var b := a + 1
-			var c := a + row
-			var d := c + 1
-			faces.append(verts[a])
-			faces.append(verts[c])
-			faces.append(verts[b])
-			faces.append(verts[b])
-			faces.append(verts[c])
-			faces.append(verts[d])
-
-	var shape := ConcavePolygonShape3D.new()
-	shape.set_faces(faces)
-	shape.backface_collision = true
+	# HeightMapShape3D: colisão MUITO mais barata que ConcavePolygonShape3D.
+	# Amostra em grade de 1 m (exigência do HeightMapShape3D).
+	var n := int(size) + 1
+	var hmap := HeightMapShape3D.new()
+	hmap.map_width = n
+	hmap.map_depth = n
+	var data := PackedFloat32Array()
+	data.resize(n * n)
+	for iz in range(n):
+		for ix in range(n):
+			var x := -half + ix
+			var z := -half + iz
+			data[iz * n + ix] = height_at(x, z)
+	hmap.map_data = data
 
 	var body := StaticBody3D.new()
 	body.name = "TerrainBody"
 	var col := CollisionShape3D.new()
-	col.shape = shape
+	col.shape = hmap
 	body.add_child(col)
 	add_child(body)
 

@@ -1,39 +1,37 @@
 extends Node3D
 class_name Scatter
 
-## Constrói o vilarejo medieval do Vetheryon com um KIT PROFISSIONAL (CC0,
-## Quaternius/Kenney): casas texturizadas, torres, muralha com portão, poço,
-## ponte, estandartes. Também espalha natureza pelo resto do mapa.
+## Constrói o vilarejo medieval (kit profissional CC0) e espalha a natureza.
 ##
-## Tudo tem colisão (trimesh) exceto as estradas (visual, no chão).
+## OTIMIZAÇÃO (FPS): a natureza (320 árvores + 150 rochas + 40 cristais) usa
+## MultiMeshInstance3D — 1 draw call por tipo em vez de 1 por objeto. E a colisão
+## desses objetos usa cilindros/boxes simples (baratos) em vez de trimesh, que é
+## caríssimo com centenas de objetos.
+##
+## Só os prédios/muros (poucos) usam colisão trimesh fiel.
 
 @export var terrain_path: NodePath = NodePath("../Terrain")
 @export var seed: int = 4242
-@export var tree_count: int = 320
-@export var rock_count: int = 150
-@export var crystal_count: int = 40
-@export var ruins_count: int = 14
+@export var tree_count: int = 260
+@export var rock_count: int = 120
+@export var crystal_count: int = 30
 @export var area_radius: float = 168.0
 @export var center_clear_radius: float = 14.0
-@export var house_count: int = 20
 @export var market_count: int = 5
+@export var wall_height_scale: float = 1.9
 
 var _terrain: Terrain
 var _rng := RandomNumberGenerator.new()
 
-# Natureza (modelos próprios)
 var _tree: PackedScene
 var _rock: PackedScene
 var _crystal: PackedScene
-
-# Kit profissional
 var _houses: Array[PackedScene] = []
 var _buildings: Array[PackedScene] = []
 var _walls: Array[PackedScene] = []
 var _towers: Array[PackedScene] = []
 var _wall_entrance: PackedScene
 var _well: PackedScene
-var _bridge: PackedScene
 var _banner: PackedScene
 var _market: PackedScene
 
@@ -58,7 +56,6 @@ func _load_assets() -> void:
 	_rock = _try("res://assets/models/rock.glb")
 	_crystal = _try("res://assets/models/crystal.glb")
 	_market = _try("res://assets/models/market.glb")
-
 	for n in ["q_House1", "q_House2"]:
 		var s := _try("res://assets/kit/%s.glb" % n)
 		if s:
@@ -68,17 +65,16 @@ func _load_assets() -> void:
 		var s := _try("res://assets/kit/%s.glb" % n)
 		if s:
 			_buildings.append(s)
-	for n in ["Wall", "WallBricks", "TallWall", "TallWallBricks"]:
+	for n in ["Wall", "WallBricks"]:
 		var s := _try("res://assets/kit/%s.glb" % n)
 		if s:
 			_walls.append(s)
-	for n in ["SmallTower", "LargeTower", "PointyTower", "WatchTowerWRoof", "Simpletower"]:
+	for n in ["SmallTower", "LargeTower", "PointyTower", "WatchTowerWRoof"]:
 		var s := _try("res://assets/kit/%s.glb" % n)
 		if s:
 			_towers.append(s)
 	_wall_entrance = _try("res://assets/kit/WallEntrance.glb")
 	_well = _try("res://assets/kit/Well.glb")
-	_bridge = _try("res://assets/kit/Bridge.glb")
 	_banner = _try("res://assets/kit/Banner.glb")
 
 
@@ -99,6 +95,70 @@ func _random_point() -> Vector3:
 	return Vector3.ZERO
 
 
+# ----------------------------------------------------------------------------
+# natureza: MultiMesh (1 draw call por tipo) + colisão simples
+# ----------------------------------------------------------------------------
+
+func _nature_multimesh(scene: PackedScene, count: int, s_min: float, s_max: float, coll_radius: float, coll_height: float) -> void:
+	if scene == null or count <= 0:
+		return
+	var model: Node3D = scene.instantiate()
+	var mesh_inst := _first_mesh(model)
+	if mesh_inst == null:
+		model.queue_free()
+		return
+
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mesh_inst.mesh
+	mm.instance_count = count
+	for i in range(count):
+		var p := _random_point()
+		var s := _rng.randf_range(s_min, s_max)
+		var yaw := _rng.randf() * TAU
+		var t := Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3(s, s, s)), p)
+		mm.set_instance_transform(i, t)
+
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mmi)
+
+	# Colisão barata: um cilindro por objeto (não trimesh).
+	var body := StaticBody3D.new()
+	add_child(body)
+	for i in range(count):
+		var t := mm.get_instance_transform(i)
+		var col := CollisionShape3D.new()
+		var cyl := CylinderShape3D.new()
+		cyl.radius = coll_radius
+		cyl.height = coll_height
+		col.shape = cyl
+		col.position = t.origin + Vector3(0, coll_height * 0.5, 0)
+		body.add_child(col)
+	model.queue_free()
+
+
+func _first_mesh(node: Node) -> MeshInstance3D:
+	if node is MeshInstance3D:
+		return node
+	for c in node.get_children():
+		var m := _first_mesh(c)
+		if m:
+			return m
+	return null
+
+
+func _scatter_nature() -> void:
+	_nature_multimesh(_tree, tree_count, 0.9, 1.6, 0.35, 2.4)
+	_nature_multimesh(_rock, rock_count, 0.6, 1.6, 0.7, 1.0)
+	_nature_multimesh(_crystal, crystal_count, 0.8, 1.4, 0.35, 1.2)
+
+
+# ----------------------------------------------------------------------------
+# prédios (poucos): colisão trimesh fiel
+# ----------------------------------------------------------------------------
+
 func _place(scene: PackedScene, pos: Vector3, scale: float = 1.0, yaw: float = NAN, coll := true) -> Node3D:
 	if scene == null:
 		return null
@@ -112,8 +172,17 @@ func _place(scene: PackedScene, pos: Vector3, scale: float = 1.0, yaw: float = N
 		var body := StaticBody3D.new()
 		holder.add_child(body)
 		_add_collisions(model, body)
+	# Sombras: só os prédios grandes projetam (economiza muito).
+	_set_shadow(model, false)
 	add_child(holder)
 	return holder
+
+
+func _set_shadow(node: Node, on: bool) -> void:
+	if node is GeometryInstance3D:
+		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if on else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for c in node.get_children():
+		_set_shadow(c, on)
 
 
 func _add_collisions(node: Node, body: StaticBody3D) -> void:
@@ -128,39 +197,17 @@ func _add_collisions(node: Node, body: StaticBody3D) -> void:
 		_add_collisions(c, body)
 
 
-func _scatter_nature() -> void:
-	for _i in range(tree_count):
-		_place(_tree, _random_point(), _rng.randf_range(0.8, 1.7))
-	for _i in range(rock_count):
-		_place(_rock, _random_point(), _rng.randf_range(0.5, 1.9))
-	for _i in range(crystal_count):
-		var inst := _place(_crystal, _random_point(), _rng.randf_range(0.7, 1.4))
-		if inst:
-			var light := OmniLight3D.new()
-			light.light_color = Color(0.45, 0.75, 1.0)
-			light.light_energy = 1.6
-			light.omni_range = 6.0
-			light.position = Vector3(0, 1.0, 0)
-			inst.add_child(light)
-
-
-# ----------------------------------------------------------------------------
-# vilarejo com o kit profissional
-# ----------------------------------------------------------------------------
-
 func _build_village() -> void:
 	var c := _terrain.village_center
 	print("VILLAGE center=", c)
 
-	# Praça central: poço + estandartes.
-	_place(_well, Vector3(c.x, _ground(c.x, c.y), c.y), 1.6, 0.0)
+	_place(_well, Vector3(c.x, _ground(c.x, c.y), c.y), 1.8, 0.0)
 	for i in range(4):
 		var a := float(i) / 4.0 * TAU
 		var bx := c.x + cos(a) * 8.0
 		var bz := c.y + sin(a) * 8.0
 		_place(_banner, Vector3(bx, _ground(bx, bz), bz), 3.0, a)
 
-	# Casas em quarteirões (fileiras ao longo de ruas), viradas para a rua.
 	var placed := 0
 	var spacing := 11.0
 	for side in [-1, 1]:
@@ -173,49 +220,92 @@ func _build_village() -> void:
 				_place(scn, Vector3(x, _ground(x, z), z), _rng.randf_range(0.95, 1.1), yaw)
 				placed += 1
 
-	# Mercados na praça.
 	for i in range(market_count):
 		var a := float(i) / float(market_count) * TAU + 0.4
 		var mx := c.x + cos(a) * 12.0
 		var mz := c.y + sin(a) * 12.0
 		_place(_market, Vector3(mx, _ground(mx, mz), mz), 1.0, atan2(c.x - mx, c.y - mz))
 
-	# Torres nos cantos da muralha.
 	var half := 42.0
 	for sx in [-1, 1]:
 		for sz in [-1, 1]:
 			var tx: float = c.x + float(sx) * half
 			var tz: float = c.y + float(sz) * half
-			_place(_towers[0], Vector3(tx, _ground(tx, tz), tz), 1.6, 0.0)
+			_place(_towers[0], Vector3(tx, _ground(tx, tz), tz), 2.2, 0.0)
 
-	# Muralha contínua.
 	_build_wall(c, half)
-
 	print("VILLAGE houses=", placed, " markets=", market_count)
 
 
 func _build_wall(c: Vector2, half: float) -> void:
 	if _walls.is_empty():
 		return
-	var seg := 1.6   # largura real do modelo Wall (~1.54)
+	var seg := 1.55
 	var gate_side := 1
-	var i := 0
+	var hs := wall_height_scale
+	# MultiMesh: 1 draw call para TODOS os segmentos de muralha (em vez de 212).
+	var scene: PackedScene = _walls[0]
+	var model: Node3D = scene.instantiate()
+	var mi := _first_mesh(model)
+	if mi == null:
+		return
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mi.mesh
+	var transforms: Array[Transform3D] = []
+
 	for sx in [-1, 1]:
-		var x := c.x + float(sx) * half
+		var x: float = c.x + float(sx) * half
 		var n := int((2.0 * half) / seg)
 		for k in range(n):
 			var z: float = c.y - half + k * seg + seg * 0.5
 			if sx == gate_side and abs(z - c.y) < 3.0:
 				continue
-			_place(_walls[i % _walls.size()], Vector3(x, _ground(x, z), z), 1.0, PI / 2)
-			i += 1
+			transforms.append(Transform3D(Basis(Vector3.UP, PI / 2).scaled(Vector3(1, hs, 1)), Vector3(x, _ground(x, z), z)))
 	for sz in [-1, 1]:
-		var z := c.y + float(sz) * half
+		var z: float = c.y + float(sz) * half
 		var n := int((2.0 * half) / seg)
 		for k in range(n):
 			var x: float = c.x - half + k * seg + seg * 0.5
-			_place(_walls[i % _walls.size()], Vector3(x, _ground(x, z), z), 1.0, 0.0)
-			i += 1
+			transforms.append(Transform3D(Basis(Vector3.UP, 0.0).scaled(Vector3(1, hs, 1)), Vector3(x, _ground(x, z), z)))
+
+	mm.instance_count = transforms.size()
+	for i in range(transforms.size()):
+		mm.set_instance_transform(i, transforms[i])
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mmi)
+
+	# Colisão: caixas simples ao longo da muralha (baratas).
+	var body := StaticBody3D.new()
+	add_child(body)
+	for t in transforms:
+		var col := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = Vector3(1.55, 1.5 * hs, 0.4)
+		col.shape = box
+		col.position = t.origin + Vector3(0, 0.75 * hs, 0)
+		col.rotation.y = t.basis.get_euler().y
+		body.add_child(col)
+
 	if _wall_entrance:
-		_place(_wall_entrance, Vector3(c.x + half, _ground(c.x + half, c.y), c.y), 1.0, PI / 2)
-	print("VILLAGE wall_segments=", i)
+		_place_scaled(_wall_entrance, Vector3(c.x + half, _ground(c.x + half, c.y), c.y), hs, PI / 2)
+	model.queue_free()
+	print("VILLAGE wall_segments=", transforms.size())
+
+
+func _place_scaled(scene: PackedScene, pos: Vector3, height_scale: float, yaw: float) -> Node3D:
+	if scene == null:
+		return null
+	var holder := Node3D.new()
+	holder.scale = Vector3(1.0, height_scale, 1.0)
+	holder.position = pos
+	holder.rotation.y = yaw
+	var model: Node3D = scene.instantiate()
+	holder.add_child(model)
+	var body := StaticBody3D.new()
+	holder.add_child(body)
+	_add_collisions(model, body)
+	add_child(holder)
+	return holder
