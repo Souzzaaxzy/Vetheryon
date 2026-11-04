@@ -2,16 +2,17 @@ extends CharacterBody3D
 class_name Player
 
 ## Vetheryon player controller — modelo humano animado (hero.glb).
-## Movimento relativo à câmera, pulo, gravidade e uma máquina de estados simples
-## que escolhe entre as animações Idle/Walk/Run/Jump.
+## Movimento relativo ao YAW DA CÂMERA (empurrar o analógico para cima faz o
+## personagem ir para onde a câmera aponta). O corpo gira para encarar a direção
+## do movimento; a câmera é um nó separado (CameraRig) e não é afetada por isso.
 
-@export var walk_speed: float = 3.4
+@export var walk_speed: float = 3.6
 @export var run_speed: float = 7.0
 @export var jump_velocity: float = 5.2
 @export var acceleration: float = 12.0
 @export var rotation_speed: float = 12.0
+@export var camera_rig_path: NodePath
 
-@onready var camera_rig: CameraRig = $CameraRig
 @onready var model: Node3D = $Model
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
@@ -20,11 +21,15 @@ var move_input: Vector2 = Vector2.ZERO
 var wants_jump: bool = false
 var wants_run: bool = false
 
+var _camera_rig: CameraRig
 var _anim: AnimationPlayer
 var _current: String = ""
 
 
 func _ready() -> void:
+	_camera_rig = get_node_or_null(camera_rig_path)
+	if _camera_rig == null:
+		_camera_rig = get_tree().get_first_node_in_group("camera_rig") as CameraRig
 	_anim = _find_animation_player(model)
 	if _anim:
 		_play("Idle")
@@ -42,7 +47,8 @@ func _find_animation_player(root: Node) -> AnimationPlayer:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		camera_rig.apply_look(event.relative)
+		if _camera_rig:
+			_camera_rig.apply_look(event.relative)
 
 
 func _physics_process(delta: float) -> void:
@@ -56,8 +62,10 @@ func _physics_process(delta: float) -> void:
 	wants_jump = false
 
 	var speed := run_speed if wants_run else walk_speed
-	var basis: Basis = camera_rig.get_yaw_basis()
-	var direction: Vector3 = (basis * Vector3(move_input.x, 0.0, move_input.y)).normalized()
+	var direction := Vector3.ZERO
+	if _camera_rig:
+		var basis: Basis = _camera_rig.get_yaw_basis()
+		direction = (basis * Vector3(move_input.x, 0.0, move_input.y)).normalized()
 	var target: Vector3 = direction * speed * move_input.length()
 
 	velocity.x = move_toward(velocity.x, target.x, acceleration * delta * speed)
@@ -108,8 +116,8 @@ func _read_keyboard() -> void:
 	wants_run = wants_run or Input.is_action_pressed("run")
 	if Input.is_action_just_pressed("jump"):
 		wants_jump = true
-	if Input.is_action_just_pressed("toggle_camera"):
-		camera_rig.toggle_mode()
+	if Input.is_action_just_pressed("toggle_camera") and _camera_rig:
+		_camera_rig.toggle_mode()
 
 
 func set_move_input(value: Vector2) -> void:
@@ -117,4 +125,10 @@ func set_move_input(value: Vector2) -> void:
 
 
 func apply_look(relative: Vector2) -> void:
-	camera_rig.apply_look(relative)
+	if _camera_rig:
+		_camera_rig.apply_look(relative)
+
+
+func toggle_camera_mode() -> void:
+	if _camera_rig:
+		_camera_rig.toggle_mode()

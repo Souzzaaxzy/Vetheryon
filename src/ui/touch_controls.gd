@@ -162,4 +162,4 @@ func _on_run() -> void:
 
 func _on_camera() -> void:
 	if _player:
-		_player.camera_rig.toggle_mode()
+		_player.toggle_camera_mode()

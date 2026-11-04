@@ -1,7 +1,6 @@
-[gd_scene load_steps=6 format=3 uid="uid://bplayer0veth"]
+[gd_scene load_steps=5 format=3 uid="uid://bplayer0veth"]
 
 [ext_resource type="Script" path="res://src/player/player.gd" id="1_player"]
-[ext_resource type="Script" path="res://src/player/camera_rig.gd" id="2_cam"]
 [ext_resource type="PackedScene" path="res://assets/character/hero.glb" id="3_hero"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
@@ -20,15 +19,3 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="Hero" parent="Model" instance=ExtResource("3_hero")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
-
-[node name="CameraRig" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
-script = ExtResource("2_cam")
-
-[node name="SpringArm3D" type="SpringArm3D" parent="CameraRig"]
-spring_length = 3.6
-collision_mask = 1
-
-[node name="Camera3D" type="Camera3D" parent="CameraRig/SpringArm3D"]
-current = true
-fov = 72.0

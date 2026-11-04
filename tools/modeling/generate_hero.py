@@ -34,6 +34,72 @@ def find_asset(fragment, subdir="clothes"):
     return AssetService.find_asset_absolute_path(fragment, subdir)
 
 
+def hide_body_under_clothes(basemesh, clothes_list):
+    """Remove do corpo os vértices que estão sob as roupas.
+
+    Muitos modelos do MakeHuman (ex.: a regata) NÃO trazem "delete group", então
+    o corpo nu é renderizado junto da roupa -> parece um personagem duplicado.
+    Um MaskModifier resolveria no Blender, mas NÃO é exportado para glTF. Então
+    aqui deletamos de fato os vértices do corpo que ficam dentro do volume de
+    alguma peça de roupa (BVHTree), preservando os pesos de skinning.
+    """
+    import bmesh
+    from mathutils.bvhtree import BVHTree
+
+    # 1. Marca os vértices do corpo que estão dentro de alguma roupa.
+    hidden: set[int] = set()
+    for clothes in clothes_list:
+        if clothes is None:
+            continue
+        bm = bmesh.new()
+        bm.from_mesh(clothes.data)
+        bmesh.ops.transform(bm, matrix=clothes.matrix_world, verts=bm.verts)
+        bvh = BVHTree.FromBMesh(bm, epsilon=0.0)
+        bm.free()
+
+        for v in basemesh.data.vertices:
+            world_co = basemesh.matrix_world @ v.co
+            # Remove a pele que está na altura da roupa (dentro OU muito perto),
+            # para que a peça de roupa apareça em vez do corpo.
+            hit = bvh.find_nearest(world_co, 0.06)
+            if hit and hit[0] is not None:
+                hidden.add(v.index)
+
+    if not hidden:
+        print("HIDDEN_UNDER_CLOTHES 0 (nada a remover)")
+        return
+
+    # 2. Deleta esses vértices de verdade (bmesh preserva os vertex groups/pesos).
+    bm = bmesh.new()
+    bm.from_mesh(basemesh.data)
+    bm.verts.ensure_lookup_table()
+    to_delete = [bm.verts[i] for i in hidden if i < len(bm.verts)]
+    bmesh.ops.delete(bm, geom=to_delete, context="VERTS")
+    bm.to_mesh(basemesh.data)
+    bm.free()
+    basemesh.data.update()
+    print("HIDDEN_UNDER_CLOTHES", len(hidden), "vertices removidos do corpo")
+
+
+def force_opaque():
+    """Força TODOS os materiais a serem opacos.
+
+    O material do corpo vem com alpha=BLEND (herdado do MakeHuman). No Godot,
+    material transparente é desenhado DEPOIS do opaco, então o corpo nu aparecia
+    através da roupa -> parecia um "personagem duplicado". Forçando opaco, a
+    roupa (opaca) esconde o corpo corretamente.
+    """
+    for mat in bpy.data.materials:
+        try:
+            if hasattr(mat, "surface_render_method"):
+                mat.surface_render_method = "DITHERED"
+            if hasattr(mat, "blend_method"):
+                mat.blend_method = "OPAQUE"
+        except Exception as exc:  # noqa: BLE001
+            print("MAT_OPAQUE_FAIL", mat.name, exc)
+    print("FORCED_OPAQUE", len(bpy.data.materials), "materiais")
+
+
 def recolor(obj, rgb):
     """Troca a cor base e remove texturas de cor (senão a textura vence no export)."""
     for mat in obj.data.materials:
@@ -212,6 +278,7 @@ def build():
 
     human = HumanService.create_human(feet_on_ground=True, macro_detail_dict=macro)
     print("HUMAN", human.name, len(human.data.vertices), "verts")
+    print("HUMAN_MODS", [m.type for m in human.modifiers])
 
     skin = find_asset("middleage_african_male.mhmat", "skins")
     HumanService.set_character_skin(skin, human, skin_type="ENHANCED_SSS", material_instances=True)
@@ -227,7 +294,7 @@ def build():
         if not path:
             return None
         return HumanService.add_mhclo_asset(
-            path, human, asset_type="Clothes", subdiv_levels=1,
+            path, human, asset_type="Clothes", subdiv_levels=0,
             material_type="MAKESKIN", set_up_rigging=True,
             interpolate_weights=True, import_subrig=True, import_weights=True)
 
@@ -244,6 +311,9 @@ def build():
 
     if rig:
         add_animations(rig)
+
+    hide_body_under_clothes(human, [shirt, pants, shoes])
+    force_opaque()
 
     return human, rig
 
