@@ -10,12 +10,13 @@ on:
 env:
   GODOT_VERSION: 4.7.2
   GODOT_STATUS: stable
+  ANDROID_CMDLINE_TOOLS: "11076708"
 
 jobs:
   build-android:
     name: Android debug APK
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
@@ -27,24 +28,35 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android platform + build-tools
-        run: |
-          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "platform-tools"
-
-      - name: Cache Godot + export templates
-        id: cache-godot
+      - name: Cache Godot, templates and Android SDK
+        id: cache
         uses: actions/cache@v4
         with:
           path: |
             ~/godot-bin
             ~/.local/share/godot/export_templates
-          key: godot-${{ env.GODOT_VERSION }}
+            ~/android-sdk
+          key: vetheryon-${{ env.GODOT_VERSION }}-${{ env.ANDROID_CMDLINE_TOOLS }}
+
+      - name: Install Android SDK (cmdline-tools + packages)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          set -e
+          SDK="$HOME/android-sdk"
+          mkdir -p "$SDK/cmdline-tools"
+          curl -sL -o /tmp/cmdtools.zip \
+            "https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_CMDLINE_TOOLS}_latest.zip"
+          unzip -o -q /tmp/cmdtools.zip -d /tmp/cmdtools
+          mv /tmp/cmdtools/cmdline-tools "$SDK/cmdline-tools/latest"
+          chmod +x "$SDK/cmdline-tools/latest/bin/"*
+          export ANDROID_HOME="$SDK"
+          export ANDROID_SDK_ROOT="$SDK"
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" --licenses > /dev/null
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" \
+            "platform-tools" "platforms;android-35" "build-tools;35.0.0" > /dev/null
 
       - name: Download Godot editor
-        if: steps.cache-godot.outputs.cache-hit != 'true'
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p ~/godot-bin
           curl -sL -o /tmp/godot.zip \
@@ -53,7 +65,7 @@ jobs:
           chmod +x ~/godot-bin/Godot_v${GODOT_VERSION}-${GODOT_STATUS}_linux.x86_64
 
       - name: Download export templates
-        if: steps.cache-godot.outputs.cache-hit != 'true'
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_STATUS}
           curl -sL -o /tmp/templates.tpz \
@@ -68,7 +80,7 @@ jobs:
           [gd_resource type="EditorSettings" format=3]
 
           [resource]
-          export/android/android_sdk_path = "${ANDROID_SDK_ROOT}"
+          export/android/android_sdk_path = "${HOME}/android-sdk"
           export/android/java_sdk_path = "${JAVA_HOME}"
           export/android/debug_keystore = "${GITHUB_WORKSPACE}/android/debug.keystore"
           export/android/debug_keystore_user = "androiddebugkey"
