@@ -1,0 +1,16 @@
+# Godot
+.godot/
+*.translation
+*.import
+
+# Android build
+build/
+*.apk
+*.aab
+
+# OS / editors
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

@@ -1,0 +1,49 @@
+[gd_scene load_steps=8 format=3 uid="uid://bmainvethy0n"]
+
+[ext_resource type="Script" path="res://src/world/terrain.gd" id="1_terrain"]
+[ext_resource type="PackedScene" path="res://src/player/player.tscn" id="2_player"]
+[ext_resource type="Script" path="res://src/ui/touch_controls.gd" id="3_touch"]
+[ext_resource type="Script" path="res://src/ui/hud.gd" id="4_hud"]
+
+[sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
+sky_top_color = Color(0.25, 0.42, 0.7, 1)
+sky_horizon_color = Color(0.7, 0.78, 0.86, 1)
+ground_bottom_color = Color(0.22, 0.2, 0.18, 1)
+ground_horizon_color = Color(0.55, 0.55, 0.5, 1)
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("SkyMat")
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+sky = SubResource("Sky")
+ambient_light_source = 3
+ambient_light_energy = 0.5
+tonemap_mode = 3
+fog_enabled = true
+fog_light_color = Color(0.72, 0.78, 0.85, 1)
+fog_density = 0.0012
+
+[node name="Main" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.86, -0.35, 0.36, 0.0, 0.71, 0.7, -0.5, -0.6, 0.61, 0, 40, 0)
+light_energy = 1.1
+shadow_enabled = true
+shadow_bias = 0.03
+
+[node name="Terrain" type="Node3D" parent="."]
+script = ExtResource("1_terrain")
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 22, 0)
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("4_hud")
+
+[node name="TouchControls" type="CanvasLayer" parent="."]
+script = ExtResource("3_touch")
+player_path = NodePath("../Player")
