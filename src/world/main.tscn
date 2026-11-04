@@ -1,10 +1,11 @@
-[gd_scene load_steps=9 format=3 uid="uid://bmainvethy0n"]
+[gd_scene load_steps=10 format=3 uid="uid://bmainvethy0n"]
 
 [ext_resource type="Script" path="res://src/world/world.gd" id="1_world"]
 [ext_resource type="PackedScene" path="res://src/player/player.tscn" id="2_player"]
 [ext_resource type="Script" path="res://src/ui/touch_controls.gd" id="3_touch"]
 [ext_resource type="Script" path="res://src/ui/hud.gd" id="4_hud"]
 [ext_resource type="Script" path="res://src/player/camera_rig.gd" id="6_camrig"]
+[ext_resource type="Script" path="res://src/ui/start_screen.gd" id="7_start"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.25, 0.42, 0.7, 1)
@@ -62,3 +63,7 @@ script = ExtResource("4_hud")
 [node name="TouchControls" type="CanvasLayer" parent="."]
 script = ExtResource("3_touch")
 player_path = NodePath("../Player")
+
+[node name="StartScreen" type="CanvasLayer" parent="."]
+layer = 10
+script = ExtResource("7_start")

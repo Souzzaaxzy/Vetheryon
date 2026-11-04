@@ -1,34 +1,34 @@
 [gd_scene format=3]
 
 [sub_resource type="BoxShape3D" id="lf_1"]
-size = Vector3(2, 4000, 1540)
+size = Vector3(2, 4000, 516)
 
 [sub_resource type="BoxShape3D" id="lf_2"]
-size = Vector3(2, 4000, 1540)
+size = Vector3(2, 4000, 516)
 
 [sub_resource type="BoxShape3D" id="lf_3"]
-size = Vector3(1540, 4000, 2)
+size = Vector3(516, 4000, 2)
 
 [sub_resource type="BoxShape3D" id="lf_4"]
-size = Vector3(1540, 4000, 2)
+size = Vector3(516, 4000, 2)
 
 [node name="MapEdge" type="Node3D" unique_id=661500925]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -768, 0, -768)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -256, 0, -256)
 
 [node name="EdgeWall" type="StaticBody3D" parent="." unique_id=661500927 groups=["edge_wall"]]
 
 [node name="Side0" type="CollisionShape3D" parent="EdgeWall" unique_id=661500929]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, 768)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, 256)
 shape = SubResource("lf_1")
 
 [node name="Side1" type="CollisionShape3D" parent="EdgeWall" unique_id=661500931]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1537, 0, 768)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 513, 0, 256)
 shape = SubResource("lf_2")
 
 [node name="Side2" type="CollisionShape3D" parent="EdgeWall" unique_id=661500933]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 768, 0, -1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 256, 0, -1)
 shape = SubResource("lf_3")
 
 [node name="Side3" type="CollisionShape3D" parent="EdgeWall" unique_id=661500935]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 768, 0, 1537)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 256, 0, 513)
 shape = SubResource("lf_4")
