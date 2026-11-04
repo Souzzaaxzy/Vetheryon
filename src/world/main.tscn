@@ -1,9 +1,10 @@
-[gd_scene load_steps=8 format=3 uid="uid://bmainvethy0n"]
+[gd_scene load_steps=9 format=3 uid="uid://bmainvethy0n"]
 
 [ext_resource type="Script" path="res://src/world/terrain.gd" id="1_terrain"]
 [ext_resource type="PackedScene" path="res://src/player/player.tscn" id="2_player"]
 [ext_resource type="Script" path="res://src/ui/touch_controls.gd" id="3_touch"]
 [ext_resource type="Script" path="res://src/ui/hud.gd" id="4_hud"]
+[ext_resource type="Script" path="res://src/world/scatter.gd" id="5_scatter"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.25, 0.42, 0.7, 1)
@@ -38,8 +39,12 @@ shadow_bias = 0.03
 [node name="Terrain" type="Node3D" parent="."]
 script = ExtResource("1_terrain")
 
+[node name="Scatter" type="Node3D" parent="."]
+script = ExtResource("5_scatter")
+terrain_path = NodePath("../Terrain")
+
 [node name="Player" parent="." instance=ExtResource("2_player")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 22, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 24, 0)
 
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("4_hud")

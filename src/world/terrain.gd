@@ -6,10 +6,10 @@ class_name Terrain
 ## (areia -> grama -> rocha -> neve) via vertex colors, e colisão correspondente.
 ## Não depende de texturas: o "look" vem da geometria + cor, evitando cara de PNG.
 
-@export var size: float = 200.0
-@export var resolution: int = 200
-@export var height_scale: float = 18.0
-@export var noise_frequency: float = 0.006
+@export var size: float = 320.0
+@export var resolution: int = 320
+@export var height_scale: float = 22.0
+@export var noise_frequency: float = 0.004
 @export var seed: int = 20261104
 
 var _noise: FastNoiseLite
