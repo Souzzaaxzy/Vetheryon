@@ -7,6 +7,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 env:
   GODOT_VERSION: 4.7.2
   GODOT_STATUS: stable
@@ -105,3 +108,17 @@ jobs:
           name: vetheryon-debug-apk
           path: build/vetheryon.apk
           if-no-files-found: error
+
+      # Link fixo e sempre atualizado para o APK mais recente da main.
+      - name: Publish rolling release "latest"
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Vetheryon — build mais recente"
+          body: |
+            APK de debug gerado automaticamente a partir do commit ${{ github.sha }}.
+
+            Instale este arquivo (`vetheryon.apk`) no Android. É o build mais novo da branch main.
+          files: build/vetheryon.apk
+          make_latest: true
