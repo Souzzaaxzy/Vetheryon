@@ -48,6 +48,11 @@ var _banner: PackedScene
 var _market: PackedScene
 var _road_dirt: PackedScene
 var _road_stone: PackedScene
+var _church: PackedScene
+var _barrel: PackedScene
+var _chest: PackedScene
+var _column: PackedScene
+var _candelabrum: PackedScene
 
 
 func _ready() -> void:
@@ -97,6 +102,11 @@ func _load_assets() -> void:
 	_banner = _try("res://assets/kit/Banner.glb")
 	_road_dirt = _try("res://assets/roads/road_dirt_straight.glb")
 	_road_stone = _try("res://assets/roads/road_stone_straight.glb")
+	_church = _try("res://assets/models/church.glb")
+	_barrel = _try("res://assets/props/Barrel.glb")
+	_chest = _try("res://assets/props/Chest.glb")
+	_column = _try("res://assets/props/Column.glb")
+	_candelabrum = _try("res://assets/props/Candelabrum.glb")
 
 
 func _ground(x: float, z: float) -> float:
@@ -110,7 +120,10 @@ func _random_point() -> Vector3:
 		if r < center_clear_radius:
 			continue
 		var p := Vector2(cos(a) * r, sin(a) * r)
-		if p.distance_to(_terrain.village_center) < _terrain.village_radius + 8.0:
+		# Não nascer natureza dentro da muralha (quadrada, com folga).
+		var dx: float = abs(p.x - _terrain.village_center.x)
+		var dz: float = abs(p.y - _terrain.village_center.y)
+		if maxf(dx, dz) < _terrain.village_half + 6.0:
 			continue
 		return Vector3(p.x, _ground(p.x, p.y), p.y)
 	return Vector3.ZERO
@@ -226,34 +239,50 @@ func _build_village() -> void:
 	var c := _terrain.village_center
 	print("VILLAGE center=", c)
 
-	_place(_well, Vector3(c.x, _ground(c.x, c.y), c.y), 1.8 * building_scale * 0.5, 0.0)
+	# Muralha quadrada. Portão no lado +X. Tudo é posicionado em relação a isto.
+	var half := 90.0
+	var gate := Vector3(c.x + half, 0, c.y)
+
+	# --- Praça central: poço + estandartes ---
+	_place(_well, Vector3(c.x, _ground(c.x, c.y), c.y), 2.6, 0.0)
 	for i in range(4):
-		var a := float(i) / 4.0 * TAU
-		var bx := c.x + cos(a) * 12.0
-		var bz := c.y + sin(a) * 12.0
-		_place(_banner, Vector3(bx, _ground(bx, bz), bz), 3.0 * building_scale * 0.5, a)
+		var a := float(i) / 4.0 * TAU + 0.4
+		var bx := c.x + cos(a) * 11.0
+		var bz := c.y + sin(a) * 11.0
+		_place(_banner, Vector3(bx, _ground(bx, bz), bz), 4.2, a)
 
-	var placed := 0
-	var spacing := 11.0 * building_scale * 0.6
+	# --- Grade SIMÉTRICA de edifícios dentro da muralha ---
+	# 5 colunas x 4 fileiras (2 ao norte da rua, 2 ao sul) = 20 edifícios.
+	var cols := [-64.0, -32.0, 0.0, 32.0, 64.0]
+	var rows := [-58.0, -26.0, 26.0, 58.0]
 	var house_positions: Array[Vector3] = []
-	for side in [-1, 1]:
-		for row in range(2):
-			for i in range(5):
-				var x := c.x - 5.0 * spacing + i * spacing
-				var z := c.y + float(side) * (7.0 + row * 16.0) * building_scale * 0.55
-				var yaw := 0.0 if side < 0 else PI
-				var scn: PackedScene = _houses[placed % _houses.size()] if placed % 3 == 0 else _buildings[placed % _buildings.size()]
-				_place(scn, Vector3(x, _ground(x, z), z), building_scale * _rng.randf_range(0.95, 1.1), yaw)
-				house_positions.append(Vector3(x, 0, z))
-				placed += 1
+	var placed := 0
+	for rz in rows:
+		for cx in cols:
+			var x: float = c.x + cx
+			var z: float = c.y + rz
+			# A fileira do centro (x=0) deixa a praça livre perto do poço.
+			if abs(cx) < 1.0 and abs(rz) < 20.0:
+				continue
+			var yaw := 0.0 if rz < 0.0 else PI  # fachada virada para a rua central
+			var scn: PackedScene = _houses[placed % _houses.size()] if placed % 3 == 0 else _buildings[placed % _buildings.size()]
+			_place(scn, Vector3(x, _ground(x, z), z), building_scale * _rng.randf_range(0.9, 1.0), yaw)
+			house_positions.append(Vector3(x, 0, z))
+			placed += 1
 
+	# --- Igreja no fim da rua principal, oposta ao portão ---
+	if _church:
+		var gx := c.x - 66.0
+		_place(_church, Vector3(gx, _ground(gx, c.y), c.y), 2.4, -PI / 2)
+
+	# --- Mercados ao redor da praça ---
 	for i in range(market_count):
 		var a := float(i) / float(market_count) * TAU + 0.4
-		var mx := c.x + cos(a) * 16.0
-		var mz := c.y + sin(a) * 16.0
-		_place(_market, Vector3(mx, _ground(mx, mz), mz), building_scale * 0.6, atan2(c.x - mx, c.y - mz))
+		var mx := c.x + cos(a) * 18.0
+		var mz := c.y + sin(a) * 18.0
+		_place(_market, Vector3(mx, _ground(mx, mz), mz), building_scale * 0.55, atan2(c.x - mx, c.y - mz))
 
-	var half := 70.0
+	# --- Torres nos 4 cantos ---
 	for sx in [-1, 1]:
 		for sz in [-1, 1]:
 			var tx: float = c.x + float(sx) * half
@@ -261,9 +290,46 @@ func _build_village() -> void:
 			_place(_towers[0], Vector3(tx, _ground(tx, tz), tz), tower_scale, 0.0)
 
 	_build_wall(c, half)
-	# Rede de caminhos: pedra das casas até a praça; terra da praça até o portão.
-	_build_roads(c, house_positions, Vector3(c.x + half, 0, c.y))
-	print("VILLAGE houses=", placed, " markets=", market_count)
+	# Rede de caminhos: pedra de cada edifício até a praça; terra da praça ao portão.
+	_build_roads(c, house_positions, gate)
+	# Detalhes que dão vida: barris, baús, candelabros e colunas.
+	_dress_village(c, house_positions)
+	print("VILLAGE houses=", placed, " markets=", market_count, " half=", half)
+
+
+## Enfeites: barris/baús junto das casas, colunas no caminho e candelabros na praça.
+func _dress_village(c: Vector2, houses: Array[Vector3]) -> void:
+	var n := 0
+	for h in houses:
+		# Barril e baú ao lado de cada edifício.
+		for _k in range(_rng.randi_range(1, 2)):
+			var a := _rng.randf() * TAU
+			var p := h + Vector3(cos(a), 0, sin(a)) * _rng.randf_range(4.0, 6.5)
+			p.y = _ground(p.x, p.z)
+			_place(_barrel, p, building_scale * 0.5, _rng.randf() * TAU)
+			n += 1
+		if _rng.randf() < 0.5:
+			var p2 := h + Vector3(_rng.randf_range(-5, 5), 0, _rng.randf_range(-5, 5))
+			p2.y = _ground(p2.x, p2.z)
+			_place(_chest, p2, building_scale * 0.5, _rng.randf() * TAU)
+			n += 1
+
+	# Colunas ladeando a rua principal (do portão à praça).
+	for k in range(3):
+		for side in [-1, 1]:
+			var p := Vector3(c.x + 22.0 + k * 14.0, 0, c.y + float(side) * 5.5)
+			p.y = _ground(p.x, p.z)
+			_place(_column, p, building_scale * 0.7, 0.0)
+			n += 1
+
+	# Candelabros na praça.
+	for i in range(6):
+		var a := float(i) / 6.0 * TAU
+		var p := Vector3(c.x + cos(a) * 7.5, 0, c.y + sin(a) * 7.5)
+		p.y = _ground(p.x, p.z)
+		_place(_candelabrum, p, building_scale * 0.7, a)
+		n += 1
+	print("VILLAGE props=", n)
 
 
 func _tile_multimesh(scene: PackedScene, transforms: Array[Transform3D]) -> void:

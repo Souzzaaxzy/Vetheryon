@@ -16,9 +16,13 @@ class_name Terrain
 @export var seed: int = 20261104
 @export var bedrock_depth: float = 60.0
 @export var village_center: Vector2 = Vector2(60.0, -60.0)
-@export var village_radius: float = 62.0
+## Meia-largura da área PLANA dentro da muralha (a vila é quadrada).
+@export var village_half: float = 96.0
+## Faixa de transição suave do platô para o terreno natural (fora do muro).
+@export var village_blend: float = 14.0
 
 var _noise: FastNoiseLite
+var _village_ground: float = 0.0
 
 
 func _ready() -> void:
@@ -27,18 +31,23 @@ func _ready() -> void:
 	_noise.frequency = noise_frequency
 	_noise.seed = seed
 	_noise.fractal_octaves = 5
+	_village_ground = _noise.get_noise_2d(village_center.x, village_center.y) * height_scale
 	_build()
 
 
-## Altura do terreno em (x, z). Achata a área da vila para um plateau reto.
+## Altura do terreno em (x, z). Dentro da muralha o terreno é COMPLETAMENTE reto;
+## fora dela volta suavemente ao relevo natural.
 func height_at(x: float, z: float) -> float:
 	var h := _noise.get_noise_2d(x, z) * height_scale
-	var d := Vector2(x, z).distance_to(village_center)
-	if d < village_radius:
-		# Interpola suavemente para a altura do centro da vila.
-		var flat := _noise.get_noise_2d(village_center.x, village_center.y) * height_scale
-		var t := smoothstep(village_radius * 0.65, village_radius, d)
-		h = lerp(flat, h, t)
+	# Distância "quadrada" (Chebyshev) até o centro — casa com a muralha quadrada.
+	var dx: float = abs(x - village_center.x)
+	var dz: float = abs(z - village_center.y)
+	var d: float = maxf(dx, dz)
+	if d <= village_half:
+		return _village_ground
+	if d < village_half + village_blend:
+		var t := smoothstep(village_half, village_half + village_blend, d)
+		return lerp(_village_ground, h, t)
 	return h
 
 
