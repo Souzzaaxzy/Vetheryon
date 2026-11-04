@@ -12,9 +12,12 @@ class_name Scatter
 
 @export var terrain_path: NodePath = NodePath("../Terrain")
 @export var seed: int = 4242
-@export var tree_count: int = 260
-@export var rock_count: int = 120
-@export var crystal_count: int = 30
+@export var tree_count: int = 110
+@export var bush_count: int = 90
+@export var rock_count: int = 70
+@export var flower_count: int = 120
+@export var mushroom_count: int = 35
+@export var crystal_count: int = 25
 @export var area_radius: float = 168.0
 @export var center_clear_radius: float = 14.0
 @export var market_count: int = 5
@@ -24,6 +27,10 @@ var _terrain: Terrain
 var _rng := RandomNumberGenerator.new()
 
 var _tree: PackedScene
+var _tree2: PackedScene
+var _bush: PackedScene
+var _flower: PackedScene
+var _mushroom: PackedScene
 var _rock: PackedScene
 var _crystal: PackedScene
 var _houses: Array[PackedScene] = []
@@ -52,7 +59,12 @@ func _try(path: String) -> PackedScene:
 
 
 func _load_assets() -> void:
-	_tree = _try("res://assets/models/tree.glb")
+	# Natureza texturizada (kit Quaternius) - MultiMesh.
+	_tree = _try("res://assets/nature/BigTree.glb")
+	_tree2 = _try("res://assets/nature/Tree.glb")
+	_bush = _try("res://assets/nature/Bush.glb")
+	_flower = _try("res://assets/nature/Flower.glb")
+	_mushroom = _try("res://assets/nature/Mushroom.glb")
 	_rock = _try("res://assets/models/rock.glb")
 	_crystal = _try("res://assets/models/crystal.glb")
 	_market = _try("res://assets/models/market.glb")
@@ -150,8 +162,12 @@ func _first_mesh(node: Node) -> MeshInstance3D:
 
 
 func _scatter_nature() -> void:
-	_nature_multimesh(_tree, tree_count, 0.9, 1.6, 0.35, 2.4)
+	_nature_multimesh(_tree, tree_count, 0.9, 1.6, 0.4, 2.6)
+	_nature_multimesh(_tree2, tree_count / 2, 0.9, 1.5, 0.35, 2.2)
+	_nature_multimesh(_bush, bush_count, 0.8, 1.5, 0.5, 0.8)
 	_nature_multimesh(_rock, rock_count, 0.6, 1.6, 0.7, 1.0)
+	_nature_multimesh(_flower, flower_count, 0.9, 1.4, 0.25, 0.4)
+	_nature_multimesh(_mushroom, mushroom_count, 0.9, 1.4, 0.25, 0.4)
 	_nature_multimesh(_crystal, crystal_count, 0.8, 1.4, 0.35, 1.2)
 
 
