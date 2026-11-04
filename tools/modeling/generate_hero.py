@@ -34,6 +34,45 @@ def find_asset(fragment, subdir="clothes"):
     return AssetService.find_asset_absolute_path(fragment, subdir)
 
 
+def tint_skin(basemesh, target_hex="#a9724d"):
+    """Ajusta a pele para 'parda' (marrom médio) alterando a TEXTURA da pele.
+
+    As skins do MakeHuman são claras (caucasiana) ou escuras (africana); nenhuma
+    é exatamente 'parda'. O material ENHANCED_SSS é um node group, então em vez de
+    mexer em nós, multiplicamos os pixels da imagem de pele pelo fator necessário
+    para chegar no tom pardo — preservando os detalhes da textura.
+    """
+    target = tuple(int(target_hex[i:i + 2], 16) / 255.0 for i in (1, 3, 5))
+    done = False
+    for img in bpy.data.images:
+        if img is None or "diffuse" not in (img.name or "").lower():
+            continue
+        px = list(img.pixels)
+        step = 4 * 53
+        rs = gs = bs = n = 0
+        for i in range(0, len(px) - 3, step):
+            r, g, b, a = px[i], px[i + 1], px[i + 2], px[i + 3]
+            if a < 0.5 or (r > 0.90 and g > 0.90 and b > 0.90):
+                continue
+            rs += r; gs += g; bs += b; n += 1
+        if n == 0:
+            continue
+        avg = (rs / n, gs / n, bs / n)
+        f = (target[0] / max(avg[0], 0.01), target[1] / max(avg[1], 0.01), target[2] / max(avg[2], 0.01))
+        print("SKIN_TINT", img.name, "avg=%.3f,%.3f,%.3f" % avg, "factor=%.2f,%.2f,%.2f" % f)
+        for i in range(0, len(px) - 3, 4):
+            if px[i + 3] < 0.5:
+                continue
+            px[i] = min(1.0, px[i] * f[0])
+            px[i + 1] = min(1.0, px[i + 1] * f[1])
+            px[i + 2] = min(1.0, px[i + 2] * f[2])
+        img.pixels = px
+        img.pack()
+        done = True
+    if not done:
+        print("SKIN_TINT: nenhuma imagem de pele encontrada")
+
+
 def hide_body_under_clothes(basemesh, clothes_list):
     """Remove do corpo os vértices que estão sob as roupas.
 
@@ -280,8 +319,10 @@ def build():
     print("HUMAN", human.name, len(human.data.vertices), "verts")
     print("HUMAN_MODS", [m.type for m in human.modifiers])
 
-    skin = find_asset("middleage_african_male.mhmat", "skins")
+    # Pele: parte de uma skin clara e escurece para o tom "pardo".
+    skin = find_asset("young_caucasian_male.mhmat", "skins")
     HumanService.set_character_skin(skin, human, skin_type="ENHANCED_SSS", material_instances=True)
+    tint_skin(human, "#a9724d")
 
     # Rig Mixamo (antes das roupas, para que elas sejam rigadas ao anexar).
     rig = HumanService.add_builtin_rig(human, "mixamo", import_weights=True)

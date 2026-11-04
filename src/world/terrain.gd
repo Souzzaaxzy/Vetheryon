@@ -9,14 +9,14 @@ class_name Terrain
 ##
 ## Também há uma área reta (plateau) reservada para a vila.
 
-@export var size: float = 360.0
-@export var resolution: int = 360
+@export var size: float = 380.0
+@export var resolution: int = 380
 @export var height_scale: float = 20.0
 @export var noise_frequency: float = 0.0038
 @export var seed: int = 20261104
 @export var bedrock_depth: float = 60.0
 @export var village_center: Vector2 = Vector2(60.0, -60.0)
-@export var village_radius: float = 26.0
+@export var village_radius: float = 42.0
 
 var _noise: FastNoiseLite
 

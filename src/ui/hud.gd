@@ -60,6 +60,6 @@ func _add_aerial_camera() -> void:
 	var vc := Vector3(60, 0, -60)
 	if terrain and "village_center" in terrain:
 		vc = Vector3(terrain.village_center.x, 0, terrain.village_center.y)
-	cam.global_position = vc + Vector3(26, 22, 26)
+	cam.global_position = vc + Vector3(30, 45, 30)
 	cam.look_at(vc + Vector3(0, 2, 0), Vector3.UP)
 	cam.current = true
