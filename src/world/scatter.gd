@@ -1,22 +1,18 @@
 extends Node3D
 class_name Scatter
 
-## Constrói o vilarejo medieval do Vetheryon e espalha natureza pelo resto do mapa.
+## Constrói o vilarejo medieval do Vetheryon com um KIT PROFISSIONAL (CC0,
+## Quaternius/Kenney): casas texturizadas, torres, muralha com portão, poço,
+## ponte, estandartes. Também espalha natureza pelo resto do mapa.
 ##
-## Layout do vilarejo (inspirado em vilas medievais europeias):
-##  - uma praça central com poço, igreja de um lado e bancas de mercado ao redor
-##  - casas de enxaimel enfileiradas ao longo de ruas de terra
-##  - estradas de terra batida conectando tudo
-##  - muralha de pedra leve no perímetro (opcional)
-##
-## TUDO tem colisão, exceto o visual das estradas (que ficam no chão).
+## Tudo tem colisão (trimesh) exceto as estradas (visual, no chão).
 
 @export var terrain_path: NodePath = NodePath("../Terrain")
 @export var seed: int = 4242
 @export var tree_count: int = 320
 @export var rock_count: int = 150
 @export var crystal_count: int = 40
-@export var ruins_count: int = 18
+@export var ruins_count: int = 14
 @export var area_radius: float = 168.0
 @export var center_clear_radius: float = 14.0
 @export var house_count: int = 20
@@ -25,54 +21,65 @@ class_name Scatter
 var _terrain: Terrain
 var _rng := RandomNumberGenerator.new()
 
+# Natureza (modelos próprios)
 var _tree: PackedScene
 var _rock: PackedScene
 var _crystal: PackedScene
-var _wall: PackedScene
+
+# Kit profissional
 var _houses: Array[PackedScene] = []
-var _markets: Array[PackedScene] = []
-var _church: PackedScene
+var _buildings: Array[PackedScene] = []
+var _walls: Array[PackedScene] = []
+var _towers: Array[PackedScene] = []
+var _wall_entrance: PackedScene
 var _well: PackedScene
-var _gate: PackedScene
+var _bridge: PackedScene
+var _banner: PackedScene
+var _market: PackedScene
 
 
 func _ready() -> void:
 	_terrain = get_node_or_null(terrain_path)
 	if _terrain == null:
-		push_warning("Scatter: terreno não encontrado em " + str(terrain_path))
+		push_warning("Scatter: terreno não encontrado")
 		return
 	_rng.seed = seed
 	_load_assets()
-	_scatter_trees()
-	_scatter_rocks()
-	_scatter_crystals()
-	_build_ruins()
+	_scatter_nature()
 	_build_village()
 
 
+func _try(path: String) -> PackedScene:
+	return load(path) if ResourceLoader.exists(path) else null
+
+
 func _load_assets() -> void:
-	_tree = _try_load("res://assets/models/tree.glb")
-	_rock = _try_load("res://assets/models/rock.glb")
-	_crystal = _try_load("res://assets/models/crystal.glb")
-	_wall = _try_load("res://assets/models/wall.glb")
-	for h in ["res://assets/models/house.glb", "res://assets/models/house1.glb", "res://assets/models/house2.glb"]:
-		var s := _try_load(h)
+	_tree = _try("res://assets/models/tree.glb")
+	_rock = _try("res://assets/models/rock.glb")
+	_crystal = _try("res://assets/models/crystal.glb")
+	_market = _try("res://assets/models/market.glb")
+
+	for n in ["q_House1", "q_House2"]:
+		var s := _try("res://assets/kit/%s.glb" % n)
 		if s:
 			_houses.append(s)
-	for m in ["res://assets/models/market.glb", "res://assets/models/market1.glb"]:
-		var s := _try_load(m)
+	for n in ["q_Building1_Small", "q_Building1_Large", "q_Building2_Small", "q_Building2_Large",
+			"q_Building3_Small", "q_Building3_Big", "q_Building4"]:
+		var s := _try("res://assets/kit/%s.glb" % n)
 		if s:
-			_markets.append(s)
-	_church = _try_load("res://assets/models/church.glb")
-	_well = _try_load("res://assets/models/well.glb")
-	_gate = _try_load("res://assets/models/gate.glb")
-
-
-func _try_load(path: String) -> PackedScene:
-	if ResourceLoader.exists(path):
-		return load(path)
-	push_warning("Scatter: asset ausente " + path)
-	return null
+			_buildings.append(s)
+	for n in ["Wall", "WallBricks", "TallWall", "TallWallBricks"]:
+		var s := _try("res://assets/kit/%s.glb" % n)
+		if s:
+			_walls.append(s)
+	for n in ["SmallTower", "LargeTower", "PointyTower", "WatchTowerWRoof", "Simpletower"]:
+		var s := _try("res://assets/kit/%s.glb" % n)
+		if s:
+			_towers.append(s)
+	_wall_entrance = _try("res://assets/kit/WallEntrance.glb")
+	_well = _try("res://assets/kit/Well.glb")
+	_bridge = _try("res://assets/kit/Bridge.glb")
+	_banner = _try("res://assets/kit/Banner.glb")
 
 
 func _ground(x: float, z: float) -> float:
@@ -92,26 +99,24 @@ func _random_point() -> Vector3:
 	return Vector3.ZERO
 
 
-func _place(scene: PackedScene, pos: Vector3, scale_range: Vector2, yaw: float = NAN, with_collision: bool = true) -> Node3D:
+func _place(scene: PackedScene, pos: Vector3, scale: float = 1.0, yaw: float = NAN, coll := true) -> Node3D:
 	if scene == null:
 		return null
 	var holder := Node3D.new()
-	var s := _rng.randf_range(scale_range.x, scale_range.y)
-	holder.scale = Vector3(s, s, s)
+	holder.scale = Vector3(scale, scale, scale)
 	holder.position = pos
 	holder.rotation.y = _rng.randf() * TAU if is_nan(yaw) else yaw
-
 	var model: Node3D = scene.instantiate()
 	holder.add_child(model)
-	if with_collision:
+	if coll:
 		var body := StaticBody3D.new()
 		holder.add_child(body)
-		_add_mesh_collisions(model, body)
+		_add_collisions(model, body)
 	add_child(holder)
 	return holder
 
 
-func _add_mesh_collisions(node: Node, body: StaticBody3D) -> void:
+func _add_collisions(node: Node, body: StaticBody3D) -> void:
 	if node is MeshInstance3D and node.mesh:
 		var shape: ConcavePolygonShape3D = node.mesh.create_trimesh_shape()
 		if shape:
@@ -119,23 +124,17 @@ func _add_mesh_collisions(node: Node, body: StaticBody3D) -> void:
 			col.shape = shape
 			col.transform = node.transform
 			body.add_child(col)
-	for child in node.get_children():
-		_add_mesh_collisions(child, body)
+	for c in node.get_children():
+		_add_collisions(c, body)
 
 
-func _scatter_trees() -> void:
+func _scatter_nature() -> void:
 	for _i in range(tree_count):
-		_place(_tree, _random_point(), Vector2(0.8, 1.7))
-
-
-func _scatter_rocks() -> void:
+		_place(_tree, _random_point(), _rng.randf_range(0.8, 1.7))
 	for _i in range(rock_count):
-		_place(_rock, _random_point(), Vector2(0.5, 1.9))
-
-
-func _scatter_crystals() -> void:
+		_place(_rock, _random_point(), _rng.randf_range(0.5, 1.9))
 	for _i in range(crystal_count):
-		var inst := _place(_crystal, _random_point(), Vector2(0.7, 1.4))
+		var inst := _place(_crystal, _random_point(), _rng.randf_range(0.7, 1.4))
 		if inst:
 			var light := OmniLight3D.new()
 			light.light_color = Color(0.45, 0.75, 1.0)
@@ -145,181 +144,78 @@ func _scatter_crystals() -> void:
 			inst.add_child(light)
 
 
-func _build_ruins() -> void:
-	# Ruínas como LINHAS contínuas de muro (não blocos soltos).
-	for _i in range(ruins_count):
-		var origin := _random_point()
-		var ang := _rng.randf() * TAU
-		var seg := _rng.randi_range(3, 6)
-		var seg_len := 4.0
-		for k in range(seg):
-			var off := Vector3(cos(ang), 0, sin(ang)) * (k * seg_len)
-			var p := origin + off
-			p.y = _ground(p.x, p.z)
-			_place(_wall, p, Vector2(1.0, 1.0), -ang)
-
-
 # ----------------------------------------------------------------------------
-# vilarejo
+# vilarejo com o kit profissional
 # ----------------------------------------------------------------------------
 
 func _build_village() -> void:
 	var c := _terrain.village_center
 	print("VILLAGE center=", c)
 
-	# 1. Praça central: poço no meio.
-	if _well:
-		var wp := Vector3(c.x, _ground(c.x, c.y), c.y)
-		_place(_well, wp, Vector2(1.0, 1.0), 0.0)
+	# Praça central: poço + estandartes.
+	_place(_well, Vector3(c.x, _ground(c.x, c.y), c.y), 1.6, 0.0)
+	for i in range(4):
+		var a := float(i) / 4.0 * TAU
+		var bx := c.x + cos(a) * 8.0
+		var bz := c.y + sin(a) * 8.0
+		_place(_banner, Vector3(bx, _ground(bx, bz), bz), 3.0, a)
 
-	# 2. Igreja: num lado da praça, virada para o centro.
-	if _church:
-		var cx := c.x + 0.0
-		var cz := c.y - 24.0
-		_place(_church, Vector3(cx, _ground(cx, cz), cz), Vector2(1.0, 1.0), 0.0)
-
-	# 3. Casas ao longo das ruas (em fileiras, formando quarteirões).
+	# Casas em quarteirões (fileiras ao longo de ruas), viradas para a rua.
 	var placed := 0
-	var row_spacing := 12.0
-	var col_spacing := 13.0
-	var street_half := 3.4  # largura da rua / 2
-	# Duas fileiras principais ao longo do eixo X, uma de cada lado da rua central.
+	var spacing := 11.0
 	for side in [-1, 1]:
-		for i in range(5):
-			var x := c.x - 26.0 + i * col_spacing
-			var z: float = c.y + float(side) * (street_half + 6.0)
-			var p := Vector3(x, _ground(x, z), z)
-			var yaw := 0.0 if side > 0 else PI
-			_place(_houses[placed % _houses.size()], p, Vector2(1.0, 1.12), yaw)
-			placed += 1
-	# Mais duas fileiras paralelas (segunda rua).
-	for side in [-1, 1]:
-		for i in range(5):
-			var x := c.x - 26.0 + i * col_spacing
-			var z: float = c.y + float(side) * (street_half + 6.0 + row_spacing)
-			var p := Vector3(x, _ground(x, z), z)
-			var yaw := 0.0 if side > 0 else PI
-			_place(_houses[placed % _houses.size()], p, Vector2(1.0, 1.12), yaw)
-			placed += 1
+		for row in range(2):
+			for i in range(5):
+				var x := c.x - 26.0 + i * spacing
+				var z := c.y + float(side) * (6.0 + row * 13.0)
+				var yaw := 0.0 if side < 0 else PI
+				var scn: PackedScene = _houses[placed % _houses.size()] if placed % 3 == 0 else _buildings[placed % _buildings.size()]
+				_place(scn, Vector3(x, _ground(x, z), z), _rng.randf_range(0.95, 1.1), yaw)
+				placed += 1
 
-	# 4. Mercados ao redor da praça.
+	# Mercados na praça.
 	for i in range(market_count):
-		var ang := (float(i) / float(market_count)) * TAU + 0.4
-		var rad := 11.0
-		var x := c.x + cos(ang) * rad
-		var z := c.y + sin(ang) * rad
-		var yaw := atan2(c.x - x, c.y - z)
-		_place(_markets[i % _markets.size()], Vector3(x, _ground(x, z), z), Vector2(1.0, 1.0), yaw)
+		var a := float(i) / float(market_count) * TAU + 0.4
+		var mx := c.x + cos(a) * 12.0
+		var mz := c.y + sin(a) * 12.0
+		_place(_market, Vector3(mx, _ground(mx, mz), mz), 1.0, atan2(c.x - mx, c.y - mz))
 
-	print("VILLAGE houses=", placed, " markets=", market_count, " church=", _church != null)
-
-	# 5. Estradas de terra batida (visual, deitadas sobre o terreno).
-	_build_roads(c)
-
-	# 6. Muralha contínua no perímetro, com portão virado para a rua principal.
-	_build_wall(c)
-
-
-func _build_wall(c: Vector2) -> void:
-	if _wall == null:
-		return
-	var seg_len := 4.0
-	var half := 40.0
-	var gate_side := 1  # portão no lado +X
-	var i := 0
-	# Lados ao longo de X (frente e trás)
+	# Torres nos cantos da muralha.
+	var half := 42.0
 	for sx in [-1, 1]:
-		var x: float = c.x + sx * half
-		var n := int((2 * half) / seg_len)
+		for sz in [-1, 1]:
+			var tx: float = c.x + float(sx) * half
+			var tz: float = c.y + float(sz) * half
+			_place(_towers[0], Vector3(tx, _ground(tx, tz), tz), 1.6, 0.0)
+
+	# Muralha contínua.
+	_build_wall(c, half)
+
+	print("VILLAGE houses=", placed, " markets=", market_count)
+
+
+func _build_wall(c: Vector2, half: float) -> void:
+	if _walls.is_empty():
+		return
+	var seg := 1.6   # largura real do modelo Wall (~1.54)
+	var gate_side := 1
+	var i := 0
+	for sx in [-1, 1]:
+		var x := c.x + float(sx) * half
+		var n := int((2.0 * half) / seg)
 		for k in range(n):
-			var z: float = c.y - half + k * seg_len + seg_len * 0.5
-			# Deixa uma abertura no meio do lado do portão.
-			if sx == gate_side and abs(z - c.y) < 4.0:
+			var z: float = c.y - half + k * seg + seg * 0.5
+			if sx == gate_side and abs(z - c.y) < 3.0:
 				continue
-			_place(_wall, Vector3(x, _ground(x, z), z), Vector2(1.0, 1.0), PI / 2)
+			_place(_walls[i % _walls.size()], Vector3(x, _ground(x, z), z), 1.0, PI / 2)
 			i += 1
-	# Lados ao longo de Z (esquerda e direita)
 	for sz in [-1, 1]:
-		var z: float = c.y + sz * half
-		var n := int((2 * half) / seg_len)
+		var z := c.y + float(sz) * half
+		var n := int((2.0 * half) / seg)
 		for k in range(n):
-			var x: float = c.x - half + k * seg_len + seg_len * 0.5
-			_place(_wall, Vector3(x, _ground(x, z), z), Vector2(1.0, 1.0), 0.0)
+			var x: float = c.x - half + k * seg + seg * 0.5
+			_place(_walls[i % _walls.size()], Vector3(x, _ground(x, z), z), 1.0, 0.0)
 			i += 1
-	# Portão na abertura.
-	if _gate:
-		var gx := c.x + half
-		_place(_gate, Vector3(gx, _ground(gx, c.y), c.y), Vector2(1.0, 1.0), PI / 2)
+	if _wall_entrance:
+		_place(_wall_entrance, Vector3(c.x + half, _ground(c.x + half, c.y), c.y), 1.0, PI / 2)
 	print("VILLAGE wall_segments=", i)
-
-
-func _build_roads(c: Vector2) -> void:
-	# Rua principal ao longo de X, cruzando a praça.
-	_add_road(c + Vector2(-34, 0), c + Vector2(34, 0))
-	# Rua transversal ao longo de Z.
-	_add_road(c + Vector2(0, -34), c + Vector2(0, 34))
-	# Duas ruas paralelas (onde ficam as fileiras de casas).
-	_add_road(c + Vector2(-34, -13.4), c + Vector2(34, -13.4))
-	_add_road(c + Vector2(-34, 13.4), c + Vector2(34, 13.4))
-	# Praça central (disco de terra).
-	_add_road_disc(c, 9.0)
-
-
-func _road_material() -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(0.42, 0.34, 0.24)
-	m.roughness = 1.0
-	return m
-
-
-func _add_road(a: Vector2, b: Vector2) -> void:
-	var seg := 26
-	var width := 3.2
-	var verts := PackedVector3Array()
-	var indices := PackedInt32Array()
-	for i in range(seg + 1):
-		var t := float(i) / float(seg)
-		var p := a.lerp(b, t)
-		var dir := (b - a).normalized()
-		var n := Vector2(-dir.y, dir.x) * (width * 0.5)
-		var l := p + n
-		var r := p - n
-		verts.append(Vector3(l.x, _ground(l.x, l.y) + 0.06, l.y))
-		verts.append(Vector3(r.x, _ground(r.x, r.y) + 0.06, r.y))
-	for i in range(seg):
-		var k := i * 2
-		indices.append_array([k, k + 2, k + 1, k + 1, k + 2, k + 3])
-	var mesh := ArrayMesh.new()
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = verts
-	arrays[Mesh.ARRAY_INDEX] = indices
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	mesh.surface_set_material(0, _road_material())
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	add_child(mi)
-
-
-func _add_road_disc(center: Vector2, radius: float) -> void:
-	var seg := 32
-	var verts := PackedVector3Array()
-	var indices := PackedInt32Array()
-	verts.append(Vector3(center.x, _ground(center.x, center.y) + 0.06, center.y))
-	for i in range(seg + 1):
-		var ang := (float(i) / float(seg)) * TAU
-		var x := center.x + cos(ang) * radius
-		var z := center.y + sin(ang) * radius
-		verts.append(Vector3(x, _ground(x, z) + 0.06, z))
-	for i in range(seg):
-		indices.append_array([0, i + 1, i + 2])
-	var mesh := ArrayMesh.new()
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = verts
-	arrays[Mesh.ARRAY_INDEX] = indices
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	mesh.surface_set_material(0, _road_material())
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	add_child(mi)

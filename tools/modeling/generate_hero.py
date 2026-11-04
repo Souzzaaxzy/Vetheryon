@@ -370,10 +370,9 @@ def build():
     if rig:
         add_animations(rig)
 
-    # Roupas afastadas para fora e pele encolhida sob elas.
-    spread_clothes_outward([shirt, shoes], 0.05)
-    spread_clothes_outward([pants], 0.09)
-    hide_body_under_clothes(human, [shirt, pants, shoes])
+    # Apenas AFASTA as roupas para fora (sem deformar o corpo!).
+    spread_clothes_outward([shirt, shoes], 0.06)
+    spread_clothes_outward([pants], 0.10)
     force_opaque()
 
     return human, rig
