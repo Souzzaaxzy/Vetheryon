@@ -1,71 +1,68 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_13_-16.scn" id="1_4lmvu"]
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_14_-16.scn" id="2_frwog"]
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_15_-16.scn" id="3_77tj2"]
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_16_-16.scn" id="4_4eqcd"]
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_13_-15.scn" id="5_e8oau"]
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_14_-15.scn" id="6_pd1ep"]
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_15_-15.scn" id="7_mviwy"]
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_16_-15.scn" id="8_cyn7n"]
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_13_-14.scn" id="9_qxt6f"]
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_14_-14.scn" id="10_7jm4g"]
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_15_-14.scn" id="11_bm8yp"]
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_16_-14.scn" id="12_n32vq"]
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_13_-13.scn" id="13_gwnfg"]
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_14_-13.scn" id="14_g81wm"]
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_15_-13.scn" id="15_t1k00"]
-[ext_resource type="PackedScene" path="res://maps/world/blocks/block_16_-13.scn" id="16_7ltco"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_9_-20.scn" id="1_4lmvu"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_10_-20.scn" id="2_frwog"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_11_-20.scn" id="3_77tj2"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_12_-20.scn" id="4_4eqcd"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_9_-19.scn" id="5_e8oau"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_10_-19.scn" id="6_pd1ep"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_11_-19.scn" id="7_mviwy"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_12_-19.scn" id="8_cyn7n"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_9_-18.scn" id="9_qxt6f"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_10_-18.scn" id="10_7jm4g"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_11_-18.scn" id="11_bm8yp"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_12_-18.scn" id="12_n32vq"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_9_-17.scn" id="13_gwnfg"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_10_-17.scn" id="14_g81wm"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_11_-17.scn" id="15_t1k00"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_12_-17.scn" id="16_7ltco"]
 
 [node name="Tile_0_0" type="Node3D" unique_id=549795511]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -256, 0, -256)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -768, 0, -768)
 
-[node name="Block_13_-16" type="Node3D" parent="." unique_id=549795513 instance=ExtResource("1_4lmvu")]
+[node name="Block_9_-20" type="Node3D" parent="." unique_id=549795513 instance=ExtResource("1_4lmvu")]
 
-[node name="Block_14_-16" type="Node3D" parent="." unique_id=549795515 instance=ExtResource("2_frwog")]
+[node name="Block_10_-20" type="Node3D" parent="." unique_id=549795515 instance=ExtResource("2_frwog")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 128, 0, 0)
 
-[node name="Block_15_-16" type="Node3D" parent="." unique_id=549795517 instance=ExtResource("3_77tj2")]
+[node name="Block_11_-20" type="Node3D" parent="." unique_id=549795517 instance=ExtResource("3_77tj2")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 256, 0, 0)
 
-[node name="Block_16_-16" type="Node3D" parent="." unique_id=549795519 instance=ExtResource("4_4eqcd")]
+[node name="Block_12_-20" type="Node3D" parent="." unique_id=549795519 instance=ExtResource("4_4eqcd")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 384, 0, 0)
 
-[node name="Block_13_-15" type="Node3D" parent="." unique_id=549795521 instance=ExtResource("5_e8oau")]
+[node name="Block_9_-19" type="Node3D" parent="." unique_id=549795521 instance=ExtResource("5_e8oau")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 128)
 
-[node name="Block_14_-15" type="Node3D" parent="." unique_id=549795523 instance=ExtResource("6_pd1ep")]
+[node name="Block_10_-19" type="Node3D" parent="." unique_id=549795523 instance=ExtResource("6_pd1ep")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 128, 0, 128)
 
-[node name="Block_15_-15" type="Node3D" parent="." unique_id=549795525 instance=ExtResource("7_mviwy")]
+[node name="Block_11_-19" type="Node3D" parent="." unique_id=549795525 instance=ExtResource("7_mviwy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 256, 0, 128)
 
-[node name="Block_16_-15" type="Node3D" parent="." unique_id=549795527 instance=ExtResource("8_cyn7n")]
+[node name="Block_12_-19" type="Node3D" parent="." unique_id=549795527 instance=ExtResource("8_cyn7n")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 384, 0, 128)
 
-[node name="Block_13_-14" type="Node3D" parent="." unique_id=549795529 instance=ExtResource("9_qxt6f")]
+[node name="Block_9_-18" type="Node3D" parent="." unique_id=549795529 instance=ExtResource("9_qxt6f")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 256)
 
-[node name="Block_14_-14" type="Node3D" parent="." unique_id=963382727 instance=ExtResource("10_7jm4g")]
+[node name="Block_10_-18" type="Node3D" parent="." unique_id=963382727 instance=ExtResource("10_7jm4g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 128, 0, 256)
 
-[node name="Block_15_-14" type="Node3D" parent="." unique_id=963382729 instance=ExtResource("11_bm8yp")]
+[node name="Block_11_-18" type="Node3D" parent="." unique_id=963382729 instance=ExtResource("11_bm8yp")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 256, 0, 256)
 
-[node name="Block_16_-14" type="Node3D" parent="." unique_id=963382731 instance=ExtResource("12_n32vq")]
+[node name="Block_12_-18" type="Node3D" parent="." unique_id=963382731 instance=ExtResource("12_n32vq")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 384, 0, 256)
 
-[node name="Block_13_-13" type="Node3D" parent="." unique_id=963382733 instance=ExtResource("13_gwnfg")]
+[node name="Block_9_-17" type="Node3D" parent="." unique_id=963382733 instance=ExtResource("13_gwnfg")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 384)
 
-[node name="Block_14_-13" type="Node3D" parent="." unique_id=963382735 instance=ExtResource("14_g81wm")]
+[node name="Block_10_-17" type="Node3D" parent="." unique_id=963382735 instance=ExtResource("14_g81wm")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 128, 0, 384)
 
-[node name="Block_15_-13" type="Node3D" parent="." unique_id=963382737 instance=ExtResource("15_t1k00")]
+[node name="Block_11_-17" type="Node3D" parent="." unique_id=963382737 instance=ExtResource("15_t1k00")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 256, 0, 384)
 
-[node name="Block_16_-13" type="Node3D" parent="." unique_id=963382739 instance=ExtResource("16_7ltco")]
+[node name="Block_12_-17" type="Node3D" parent="." unique_id=963382739 instance=ExtResource("16_7ltco")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 384, 0, 384)
-
-[node name="Spawn" type="Marker3D" parent="." unique_id=963382741 groups=["spawn"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 334, 6.408804, 332)

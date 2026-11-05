@@ -6,8 +6,10 @@ extends Node3D
 ## celular nunca tem o mundo inteiro na memória. Espelha o sistema de "chunks".
 
 @export var map_dir: String = "res://maps/world"
-@export var load_distance: float = 320.0
-@export var unload_margin: float = 100.0
+## Distância para carregar um tile vizinho (512 m) — precisa ser > tile_size para
+## o mundo continuar aparecendo conforme o jogador anda.
+@export var load_distance: float = 300.0
+@export var unload_margin: float = 120.0
 @export var player_path: NodePath
 
 var _streamer: LFTileStreamer

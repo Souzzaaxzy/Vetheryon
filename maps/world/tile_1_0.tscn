@@ -1,0 +1,68 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_13_-20.scn" id="1_1x256"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_14_-20.scn" id="2_ogv8t"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_15_-20.scn" id="3_xpdkj"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_16_-20.scn" id="4_mfx5r"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_13_-19.scn" id="5_hhpf1"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_14_-19.scn" id="6_nl0kk"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_15_-19.scn" id="7_l7258"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_16_-19.scn" id="8_36dh4"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_13_-18.scn" id="9_tixp1"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_14_-18.scn" id="10_2qq45"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_15_-18.scn" id="11_0egc3"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_16_-18.scn" id="12_vey0x"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_13_-17.scn" id="13_6fcte"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_14_-17.scn" id="14_8asi6"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_15_-17.scn" id="15_roktl"]
+[ext_resource type="PackedScene" path="res://maps/world/blocks/block_16_-17.scn" id="16_xakga"]
+
+[node name="Tile_1_0" type="Node3D" unique_id=617596887]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -256, 0, -768)
+
+[node name="Block_13_-20" type="Node3D" parent="." unique_id=617596889 instance=ExtResource("1_1x256")]
+
+[node name="Block_14_-20" type="Node3D" parent="." unique_id=617596891 instance=ExtResource("2_ogv8t")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 128, 0, 0)
+
+[node name="Block_15_-20" type="Node3D" parent="." unique_id=617596893 instance=ExtResource("3_xpdkj")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 256, 0, 0)
+
+[node name="Block_16_-20" type="Node3D" parent="." unique_id=617596895 instance=ExtResource("4_mfx5r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 384, 0, 0)
+
+[node name="Block_13_-19" type="Node3D" parent="." unique_id=617596897 instance=ExtResource("5_hhpf1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 128)
+
+[node name="Block_14_-19" type="Node3D" parent="." unique_id=617596899 instance=ExtResource("6_nl0kk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 128, 0, 128)
+
+[node name="Block_15_-19" type="Node3D" parent="." unique_id=617596901 instance=ExtResource("7_l7258")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 256, 0, 128)
+
+[node name="Block_16_-19" type="Node3D" parent="." unique_id=617596903 instance=ExtResource("8_36dh4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 384, 0, 128)
+
+[node name="Block_13_-18" type="Node3D" parent="." unique_id=617596905 instance=ExtResource("9_tixp1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 256)
+
+[node name="Block_14_-18" type="Node3D" parent="." unique_id=1053344521 instance=ExtResource("10_2qq45")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 128, 0, 256)
+
+[node name="Block_15_-18" type="Node3D" parent="." unique_id=1053344523 instance=ExtResource("11_0egc3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 256, 0, 256)
+
+[node name="Block_16_-18" type="Node3D" parent="." unique_id=1053344525 instance=ExtResource("12_vey0x")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 384, 0, 256)
+
+[node name="Block_13_-17" type="Node3D" parent="." unique_id=1053344527 instance=ExtResource("13_6fcte")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 384)
+
+[node name="Block_14_-17" type="Node3D" parent="." unique_id=1053344529 instance=ExtResource("14_8asi6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 128, 0, 384)
+
+[node name="Block_15_-17" type="Node3D" parent="." unique_id=1053344531 instance=ExtResource("15_roktl")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 256, 0, 384)
+
+[node name="Block_16_-17" type="Node3D" parent="." unique_id=1053344533 instance=ExtResource("16_xakga")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 384, 0, 384)
