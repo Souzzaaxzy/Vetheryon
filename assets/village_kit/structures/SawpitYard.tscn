@@ -1,0 +1,62 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://kit/models/VK/Prop/SM_VK_Prop_SawPit.glb" id="2_6in2q"]
+[ext_resource type="PackedScene" path="res://kit/models/VK/Stockpile/SM_VK_Stockpile_Border.glb" id="4_24vgg"]
+[ext_resource type="PackedScene" path="res://kit/models/VK/Pile/SM_VK_Pile_Logs_3.glb" id="5_6km4o"]
+[ext_resource type="PackedScene" path="res://kit/models/VK/Pile/SM_VK_Pile_Planks_2.glb" id="6_cir51"]
+[ext_resource type="PackedScene" path="res://kit/models/VK/Prop/SM_VK_Prop_Sawhorse.glb" id="7_geput"]
+[ext_resource type="PackedScene" path="res://kit/models/VK/Prop/SM_VK_Prop_ChoppingBlock.glb" id="8_sixii"]
+[ext_resource type="PackedScene" path="res://kit/models/VK/Prop/SM_VK_Prop_Wheelbarrow.glb" id="9_4wbd2"]
+
+[node name="SawpitYard" type="Node3D" unique_id=1098565501]
+StructureName = "SawpitYard"
+Builder = "build_sawpit_yard"
+ExportVersion = "2026-10-24 pilot"
+
+[node name="SM_VK_Prop_SawPit_inst_001" type="Node3D" parent="." unique_id=412371798 instance=ExtResource("2_6in2q")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 0)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
+
+[node name="SM_VK_Stockpile_Border_inst_012" type="Node3D" parent="." unique_id=425635709 instance=ExtResource("4_24vgg")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0, -3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
+
+[node name="SM_VK_Pile_Logs_3_inst_005" type="Node3D" parent="." unique_id=1109938930 instance=ExtResource("5_6km4o")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.5, 0, -3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
+
+[node name="SM_VK_Stockpile_Border_inst_013" type="Node3D" parent="." unique_id=1780787088 instance=ExtResource("4_24vgg")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0, -3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
+
+[node name="SM_VK_Pile_Planks_2_inst_003" type="Node3D" parent="." unique_id=1842128341 instance=ExtResource("6_cir51")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.5, 0, -3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
+
+[node name="SM_VK_Prop_Sawhorse_inst_004" type="Node3D" parent="." unique_id=375022026 instance=ExtResource("7_geput")]
+transform = Transform3D(0.296195, 0, 0.955127, 0, 1, 0, -0.955127, 0, 0.296195, 3.90002, 0, 1)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
+
+[node name="SM_VK_Prop_ChoppingBlock_inst_008" type="Node3D" parent="." unique_id=955663911 instance=ExtResource("8_sixii")]
+transform = Transform3D(0.668641, 0, -0.743585, 0, 1, 0, 0.743585, 0, 0.668641, -3.79999, 0, 0.9)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
+
+[node name="SM_VK_Prop_Wheelbarrow_inst_007" type="Node3D" parent="." unique_id=1314590908 instance=ExtResource("9_4wbd2")]
+transform = Transform3D(-0.965342, 0, -0.260988, 0, 1, 0, 0.260988, 0, -0.965342, -3.70001, 0, -0.8)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})

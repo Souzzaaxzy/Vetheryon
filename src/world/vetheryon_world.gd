@@ -51,6 +51,7 @@ const ALL_BIOMES: Array[String] = [
 
 
 func _ready() -> void:
+	add_to_group("world")
 	_player = get_node_or_null(player_path)
 	_gen = LFTerrainGenerator.new()
 	_gen.params = _make_params()
@@ -64,6 +65,11 @@ func _ready() -> void:
 	_lib.build(world_seed)
 	_terrain_shader = load("res://addons/lowland_forge/shaders/terrain_baked.gdshader")
 	await get_tree().process_frame
+	# Leva o jogador ao ponto de spawn do mundo (o gerador escolhe um lugar com
+	# todos os biomas perto). Sem isso ele ficava na origem (0,0), longe de tudo.
+	if _player:
+		var sp := _gen.spawn_xz
+		_player.global_position = Vector3(sp.x, _gen.get_height(sp.x, sp.y) + 2.0, sp.y)
 	_update_center(true)
 	# Espera o chunk do spawn montar antes de soltar o jogador no chão.
 	for _i in 600:
@@ -96,6 +102,12 @@ func _make_params() -> LFMapParams:
 	p.rock_density = d
 	p.ground_cover_density = d
 	return p
+
+
+## Altura do chão (terreno, já com vilas achatadas) num ponto. Usada pelo
+## resgate do void: se o jogador cair abaixo disso, é devolvido para cima.
+func ground_height(x: float, z: float) -> float:
+	return _gen.get_height(x, z)
 
 
 func _physics_process(_delta: float) -> void:

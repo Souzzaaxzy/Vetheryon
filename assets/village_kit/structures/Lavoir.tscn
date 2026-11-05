@@ -94,24 +94,45 @@ ExportVersion = "2026-10-24 pilot"
 
 [node name="SM_VK_Wall_Posts_inst_006" type="Node3D" parent="." unique_id=2039855848 instance=ExtResource("2_q4pon")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0, 1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Posts_inst_007" type="Node3D" parent="." unique_id=267483566 instance=ExtResource("2_q4pon")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0, 1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Posts_inst_008" type="Node3D" parent="." unique_id=1918689653 instance=ExtResource("2_q4pon")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.5, 0, -1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Posts_inst_009" type="Node3D" parent="." unique_id=800958257 instance=ExtResource("2_q4pon")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.5, 0, -1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Posts_inst_010" type="Node3D" parent="." unique_id=54243442 instance=ExtResource("2_q4pon")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 3, 0, 0)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Posts_inst_011" type="Node3D" parent="." unique_id=978490804 instance=ExtResource("2_q4pon")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 0, 0)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_RoofS_Gable_inst_006" parent="." unique_id=294547214 instance=ExtResource("4_pegtm")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 3, 0)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_RoofS_Gable" parent="SM_VK_RoofS_Gable_inst_006" index="0" unique_id=1764214915]
 cast_shadow = 2
@@ -125,6 +146,9 @@ metadata/extras = {
 
 [node name="SM_VK_RoofS_Gable_inst_007" parent="." unique_id=2014148642 instance=ExtResource("4_pegtm")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.5, 3, 0)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_RoofS_Gable" parent="SM_VK_RoofS_Gable_inst_007" index="0" unique_id=1764214915]
 cast_shadow = 2
@@ -137,15 +161,27 @@ metadata/extras = {
 }
 
 [node name="SM_VK_Prop_LavoirBasin_inst_001" type="Node3D" parent="." unique_id=2058256461 instance=ExtResource("9_g3qnk")]
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Prop_Laundry_inst_005" type="Node3D" parent="." unique_id=1610977934 instance=ExtResource("10_1yr70")]
 transform = Transform3D(0.99863, 0, 0.052336, 0, 1, 0, -0.052336, 0, 0.99863, 0.20001, 0, -4.2)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Prop_HandPump_inst_001" type="Node3D" parent="." unique_id=646759069 instance=ExtResource("11_nmty1")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 4.20001, 0, 1.2)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Prop_Bench_inst_028" type="Node3D" parent="." unique_id=1739698332 instance=ExtResource("12_56ic1")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -4.09998, 0, 0.6)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [editable path="SM_VK_RoofS_Gable_inst_006"]
 [editable path="SM_VK_RoofS_Gable_inst_007"]

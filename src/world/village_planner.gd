@@ -25,10 +25,30 @@ const VILLAGE_STRUCTS: Array[String] = [
 ]
 ## Prédios maiores, que ficam no centro da vila.
 const CENTER_STRUCTS: Array[String] = ["TownHall", "Chapel", "Inn", "Watermill", "Windmill"]
-## Estruturas isoladas, longe das vilas.
+## Estruturas isoladas comuns (aparecem em qualquer bioma).
 const SCATTER_STRUCTS: Array[String] = [
 	"GuardTower", "Windmill", "Watermill", "Camp", "Shack_Planks", "Lavoir", "Granary",
 ]
+## Estruturas por bioma: quando o ponto cai num bioma, prefere estas.
+const BIOME_STRUCTS := {
+	"Pine Forest": ["ForesterHut", "SawpitYard", "CharcoalBurner", "Camp", "LogCabin"],
+	"Old Growth": ["ForesterHut", "SawpitYard", "Camp", "LogCabin"],
+	"Birch Woods": ["ForesterHut", "Apiary", "Camp", "LogCabin"],
+	"Meadow": ["Sheepfold", "Apiary", "Barn", "Pigsty", "Windmill", "Stable"],
+	"Palm Coast": ["FisherHut", "Camp", "Shack_Planks", "Lavoir"],
+	"Desert": ["Camp", "Shack_Planks", "GuardTower", "Mine"],
+	"Ash Barrens": ["Mine", "CharcoalBurner", "Camp", "GuardTower"],
+	"Frozen Highlands": ["Mine", "GuardTower", "Camp", "ForesterHut"],
+	"Drowned Marsh": ["FisherHut", "Camp", "Shack_Planks", "Lavoir"],
+}
+## Construções de vila por bioma (senão usa as genéricas).
+const BIOME_VILLAGE := {
+	"Palm Coast": ["FisherHut", "Shack_Planks", "Lavoir", "Inn", "Stable", "Storehouse"],
+	"Desert": ["Shack_Planks", "Stable", "Storehouse", "Granary", "Inn"],
+	"Ash Barrens": ["Shack_Planks", "Smithy", "Storehouse", "GuardTower", "Camp"],
+	"Frozen Highlands": ["LogCabin", "Storehouse", "Smithy", "Granary", "Inn"],
+	"Drowned Marsh": ["Shack_Planks", "Lavoir", "Storehouse", "Inn", "FisherHut"],
+}
 
 
 ## Achata o terreno num disco: dentro de `r` fica em `level`, e volta ao relevo
@@ -107,50 +127,75 @@ func _scan_dir(dir_path: String, ext: String) -> void:
 
 func _plan_villages(gen: LFTerrainGenerator) -> void:
 	var center: Vector2 = gen.region_center
-	var want := 7
+	var spawn: Vector2 = gen.spawn_xz
 	var placed: Array = []
-	for _try in 120:
-		if placed.size() >= want:
+	# Grade jitterada: garante vilas espalhadas por todo o mapa (não só no centro).
+	# Primeiro garante uma vila perto do spawn (o jogador acha logo de cara).
+	_place_village(gen, spawn + Vector2(150.0, 40.0), placed, 40.0)
+	var spacing := 300.0
+	var n := 7
+	for gz in range(-n, n + 1):
+		for gx in range(-n, n + 1):
+			var c := center + Vector2(gx, gz) * spacing
+			c += Vector2(_rng.randf_range(-80.0, 80.0), _rng.randf_range(-80.0, 80.0))
+			if c.distance_to(spawn) < 120.0:
+				continue   # deixa o spawn livre
+			if _rng.randf() > 0.5:
+				continue   # nem toda célula tem vila
+			if not _spot_ok(gen, c, placed, spacing * 0.8):
+				continue
+			_place_village(gen, c, placed, 40.0)
+
+
+## Acha um ponto bom perto de `near` e cria a vila ali.
+func _place_village(gen: LFTerrainGenerator, near: Vector2, placed: Array, radius: float) -> void:
+	var c := near
+	var found := false
+	for _try in 30:
+		if _spot_ok(gen, c, placed, radius * 1.6):
+			found = true
 			break
-		var a := _rng.randf() * TAU
-		var r := _rng.randf_range(260.0, 1500.0)
-		var c := center + Vector2(cos(a), sin(a)) * r
-		if not _spot_ok(gen, c, placed, 430.0):
-			continue
-		var level: float = gen.get_height(c.x, c.y)
-		var radius := 44.0
-		gen.stamps.append(FlatStamp.new(c, radius, level, 16.0))
-		gen.ground_mask.add_circle(c, radius + 3.0)
-		gen.add_site("village_%d" % placed.size(), SitePlan.new(radius), [Vector3(c.x, level, c.y), 0.0], 14.0)
-		placed.append(c)
-		villages.append({
-			"center": c,
-			"radius": radius,
-			"level": level,
-			"buildings": _layout_buildings(c, level, radius),
-		})
+		c = near + Vector2(_rng.randf_range(-60.0, 60.0), _rng.randf_range(-60.0, 60.0))
+	if not found:
+		return
+	var level: float = gen.get_height(c.x, c.y)
+	gen.stamps.append(FlatStamp.new(c, radius, level, 14.0))
+	gen.ground_mask.add_circle(c, radius + 3.0)
+	gen.add_site("village_%d" % placed.size(), SitePlan.new(radius), [Vector3(c.x, level, c.y), 0.0], 14.0)
+	placed.append(c)
+	villages.append({
+		"center": c,
+		"radius": radius,
+		"level": level,
+		"buildings": _layout_buildings(gen, c, level, radius),
+	})
 
 
-func _layout_buildings(center: Vector2, level: float, radius: float) -> Array:
+func _layout_buildings(gen: LFTerrainGenerator, center: Vector2, level: float, radius: float) -> Array:
 	var out: Array = []
-	var taken: Array = []   # [{pos: Vector2, r: float}]
-	# Uma construção grande no centro (prefeitura/capela/etc).
+	var taken: Array = []
+	var biome := _biome_at(gen, center)
+	var village_set: Array = BIOME_VILLAGE.get(biome, [])
+	# Uma construção grande no centro.
 	var mid: String = CENTER_STRUCTS[_rng.randi() % CENTER_STRUCTS.size()]
-	_try_place(STRUCT_DIR + mid + ".tscn", center, 0.0, taken, out, level)
-	# Depois 7 a 12 casas em volta, em anéis.
-	var count := _rng.randi_range(7, 12)
+	_try_place(STRUCT_DIR + mid + ".tscn", center, _rng.randf() * TAU, taken, out, level)
+	# 6 a 10 casas em volta.
+	var count := _rng.randi_range(6, 10)
 	for _i in count:
-		var scene: String = VILLAGE_STRUCTS[_rng.randi() % VILLAGE_STRUCTS.size()]
-		var ok := false
+		var scene: String
+		if not village_set.is_empty() and _rng.randf() < 0.6:
+			scene = village_set[_rng.randi() % village_set.size()]
+		else:
+			scene = VILLAGE_STRUCTS[_rng.randi() % VILLAGE_STRUCTS.size()]
+		var path := STRUCT_DIR + scene + ".tscn"
+		if not _footprints.has(path):
+			continue
 		for _attempt in 24:
 			var ang := _rng.randf() * TAU
 			var dist := _rng.randf_range(radius * 0.30, radius * 0.86)
 			var p := center + Vector2(cos(ang), sin(ang)) * dist
-			if _try_place(STRUCT_DIR + scene + ".tscn", p, _rng.randf() * TAU, taken, out, level):
-				ok = true
+			if _try_place(path, p, _rng.randf() * TAU, taken, out, level):
 				break
-		if not ok:
-			pass
 	return out
 
 
@@ -167,36 +212,70 @@ func _try_place(scene: String, pos: Vector2, yaw: float, taken: Array, out: Arra
 
 func _plan_scattered(gen: LFTerrainGenerator) -> void:
 	var center: Vector2 = gen.region_center
-	var want := 16
+	var spawn: Vector2 = gen.spawn_xz
 	var placed: Array = []
-	for _try in 200:
-		if scattered.size() >= want:
-			break
+	# Grade mais fina: estruturas soltas por todo o mapa (você sempre acha algo).
+	# Algumas estruturas logo perto do spawn (a primeira vista acontece rápido).
+	for k in 6:
 		var a := _rng.randf() * TAU
-		var r := _rng.randf_range(180.0, 1700.0)
-		var c := center + Vector2(cos(a), sin(a)) * r
-		if not _spot_ok(gen, c, placed, 130.0):
-			continue
-		# longe de qualquer vila
-		var near_village := false
-		for v: Dictionary in villages:
-			if (v["center"] as Vector2).distance_to(c) < float(v["radius"]) + 60.0:
-				near_village = true
-				break
-		if near_village:
-			continue
-		var path: String
-		if _rng.randf() < 0.22:
-			path = LANDMARK_DIR + LANDMARKS[_rng.randi() % LANDMARKS.size()] + ".glb"
-		else:
-			var scene: String = SCATTER_STRUCTS[_rng.randi() % SCATTER_STRUCTS.size()]
-			path = STRUCT_DIR + scene + ".tscn"
-		var level: float = gen.get_height(c.x, c.y)
-		gen.stamps.append(FlatStamp.new(c, 16.0, level, 8.0))
-		gen.ground_mask.add_circle(c, 15.0)
-		gen.add_site("scatter_%d" % placed.size(), SitePlan.new(16.0), [Vector3(c.x, level, c.y), 0.0], 8.0)
-		placed.append(c)
-		scattered.append({"scene": path, "pos": Vector3(c.x, level, c.y), "yaw": _rng.randf() * TAU})
+		var r := _rng.randf_range(60.0, 170.0)
+		_scatter_at(gen, spawn + Vector2(cos(a), sin(a)) * r, placed)
+	var spacing := 150.0
+	var n := 13
+	for gz in range(-n, n + 1):
+		for gx in range(-n, n + 1):
+			var c := center + Vector2(gx, gz) * spacing
+			c += Vector2(_rng.randf_range(-45.0, 45.0), _rng.randf_range(-45.0, 45.0))
+			if c.distance_to(spawn) < 45.0:
+				continue
+			if _rng.randf() > 0.42:
+				continue
+			if not _spot_ok(gen, c, placed, spacing * 0.75):
+				continue
+			_scatter_at(gen, c, placed)
+
+
+## Coloca uma estrutura solta em `c` (se o lugar servir).
+func _scatter_at(gen: LFTerrainGenerator, c: Vector2, placed: Array) -> void:
+	if not _spot_ok(gen, c, placed, 26.0):
+		return
+	for v: Dictionary in villages:
+		if (v["center"] as Vector2).distance_to(c) < float(v["radius"]) + 30.0:
+			return
+	var path := _pick_structure(gen, c)
+	if path == "":
+		return
+	var level: float = gen.get_height(c.x, c.y)
+	gen.stamps.append(FlatStamp.new(c, 14.0, level, 7.0))
+	gen.ground_mask.add_circle(c, 13.0)
+	gen.add_site("scatter_%d" % placed.size(), SitePlan.new(14.0), [Vector3(c.x, level, c.y), 0.0], 8.0)
+	placed.append(c)
+	scattered.append({"scene": path, "pos": Vector3(c.x, level, c.y), "yaw": _rng.randf() * TAU})
+
+
+## Escolhe a estrutura para um ponto: as do bioma, senão as comuns; às vezes um marco.
+func _pick_structure(gen: LFTerrainGenerator, c: Vector2) -> String:
+	if _rng.randf() < 0.06:
+		return LANDMARK_DIR + LANDMARKS[_rng.randi() % LANDMARKS.size()] + ".glb"
+	var biome := _biome_at(gen, c)
+	var pool: Array = BIOME_STRUCTS.get(biome, [])
+	if not pool.is_empty() and _rng.randf() < 0.75:
+		var scene: String = pool[_rng.randi() % pool.size()]
+		var path := STRUCT_DIR + scene + ".tscn"
+		if _footprints.has(path):
+			return path
+	var scene2: String = SCATTER_STRUCTS[_rng.randi() % SCATTER_STRUCTS.size()]
+	return STRUCT_DIR + scene2 + ".tscn"
+
+
+## Nome do bioma dominante num ponto.
+func _biome_at(gen: LFTerrainGenerator, c: Vector2) -> String:
+	var w := gen.biome_weights(c.x, c.y)
+	var idx := LFTerrainGenerator.pick_biome(w, 0.5)
+	var defs := gen.biomes()
+	if idx >= 0 and idx < defs.size():
+		return defs[idx].name
+	return ""
 
 
 ## Um ponto bom para uma vila/estrutura: em terra, plano e longe dos outros.

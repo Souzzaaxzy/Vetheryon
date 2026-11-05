@@ -1147,15 +1147,27 @@ ExportVersion = "2026-10-24 pilot"
 
 [node name="SM_VK_Wall_Stone_Shop_inst_007" type="Node3D" parent="." unique_id=1658536656 instance=ExtResource("2_j7jxs")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Prop_ShopGoods_Pots_inst_003" type="Node3D" parent="." unique_id=253239845 instance=ExtResource("4_ldo3w")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0.95, 3.55)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Sign_Potion_inst_001" type="Node3D" parent="." unique_id=2032396862 instance=ExtResource("5_yy00k")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.20001, 3.3, 3.25)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window_inst_429" parent="." unique_id=341542362 instance=ExtResource("6_2byfq")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 3, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window" parent="SM_VK_Wall_Timber_Window_inst_429" index="0" unique_id=39566587]
 cast_shadow = 2
@@ -1168,6 +1180,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Timber_Window_inst_430" parent="." unique_id=2022191329 instance=ExtResource("6_2byfq")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 5.8, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window" parent="SM_VK_Wall_Timber_Window_inst_430" index="0" unique_id=39566587]
 cast_shadow = 2
@@ -1180,15 +1195,27 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Stone_Door_inst_066" type="Node3D" parent="." unique_id=2022452293 instance=ExtResource("11_tdrs5")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Prop_Lantern_inst_061" type="Node3D" parent="." unique_id=2139993250 instance=ExtResource("12_3ajrp")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.54999, 2.55, 3.3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Prop_Planter_inst_051" type="Node3D" parent="." unique_id=1807611203 instance=ExtResource("13_67b58")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.45001, 0, 3.75)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Oriel_inst_004" parent="." unique_id=859073384 instance=ExtResource("14_nrmx7")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 3, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Oriel" parent="SM_VK_Wall_Timber_Oriel_inst_004" index="0" unique_id=1326476052]
 cast_shadow = 2
@@ -1203,6 +1230,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Timber_Window_inst_431" parent="." unique_id=1815023151 instance=ExtResource("6_2byfq")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 5.8, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window" parent="SM_VK_Wall_Timber_Window_inst_431" index="0" unique_id=39566587]
 cast_shadow = 2
@@ -1215,6 +1245,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Stone_Window_inst_231" parent="." unique_id=1004726348 instance=ExtResource("17_pm3lm")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 0, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Stone_Window" parent="SM_VK_Wall_Stone_Window_inst_231" index="0" unique_id=1289175029]
 cast_shadow = 2
@@ -1227,9 +1260,15 @@ metadata/extras = {
 
 [node name="SM_VK_Prop_FlowerBox_inst_163" type="Node3D" parent="." unique_id=264847915 instance=ExtResource("23_a8ofx")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 0.78, 3.55)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window_inst_432" parent="." unique_id=1318383848 instance=ExtResource("6_2byfq")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 3, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window" parent="SM_VK_Wall_Timber_Window_inst_432" index="0" unique_id=39566587]
 cast_shadow = 2
@@ -1242,6 +1281,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Timber_Window_inst_433" parent="." unique_id=756523258 instance=ExtResource("6_2byfq")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 5.8, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window" parent="SM_VK_Wall_Timber_Window_inst_433" index="0" unique_id=39566587]
 cast_shadow = 2
@@ -1254,15 +1296,27 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Stone_Shop_inst_008" type="Node3D" parent="." unique_id=734161423 instance=ExtResource("2_j7jxs")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 0, 1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Prop_ShopGoods_Meat_inst" type="Node3D" parent="." unique_id=519733724 instance=ExtResource("24_y6b3e")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3.54999, 0.95, 1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Prop_Sign_inst_006" type="Node3D" parent="." unique_id=320015145 instance=ExtResource("25_4wu6n")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3.25, 3.3, 2.8)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window_inst_434" parent="." unique_id=1481690193 instance=ExtResource("6_2byfq")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 3, 1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window" parent="SM_VK_Wall_Timber_Window_inst_434" index="0" unique_id=39566587]
 cast_shadow = 2
@@ -1275,6 +1329,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Timber_Window_inst_435" parent="." unique_id=1386738311 instance=ExtResource("6_2byfq")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 5.8, 1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window" parent="SM_VK_Wall_Timber_Window_inst_435" index="0" unique_id=39566587]
 cast_shadow = 2
@@ -1287,6 +1344,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Stone_Window_inst_232" parent="." unique_id=1438297693 instance=ExtResource("17_pm3lm")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 0, -1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Stone_Window" parent="SM_VK_Wall_Stone_Window_inst_232" index="0" unique_id=1289175029]
 cast_shadow = 2
@@ -1299,9 +1359,15 @@ metadata/extras = {
 
 [node name="SM_VK_Deco_Weeds_inst_254" type="Node3D" parent="." unique_id=144028982 instance=ExtResource("26_3r1vq")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 0, -1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Oriel_inst_005" parent="." unique_id=1782709429 instance=ExtResource("14_nrmx7")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 3, -1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Oriel" parent="SM_VK_Wall_Timber_Oriel_inst_005" index="0" unique_id=1326476052]
 cast_shadow = 2
@@ -1316,6 +1382,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Timber_Window_inst_436" parent="." unique_id=1876480179 instance=ExtResource("6_2byfq")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 5.8, -1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window" parent="SM_VK_Wall_Timber_Window_inst_436" index="0" unique_id=39566587]
 cast_shadow = 2
@@ -1328,12 +1397,21 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Stone_inst_274" type="Node3D" parent="." unique_id=1571478862 instance=ExtResource("27_dv2ll")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 0, -4.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Deco_Weeds_inst_255" type="Node3D" parent="." unique_id=1436364110 instance=ExtResource("26_3r1vq")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 0, -4.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window_inst_437" parent="." unique_id=1824694741 instance=ExtResource("6_2byfq")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 3, -4.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window" parent="SM_VK_Wall_Timber_Window_inst_437" index="0" unique_id=39566587]
 cast_shadow = 2
@@ -1346,6 +1424,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Timber_K_inst_084" parent="." unique_id=459872862 instance=ExtResource("28_t8he3")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 5.8, -4.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_K" parent="SM_VK_Wall_Timber_K_inst_084" index="0" unique_id=1300598792]
 cast_shadow = 2
@@ -1358,6 +1439,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Stone_Window_inst_233" parent="." unique_id=50900696 instance=ExtResource("17_pm3lm")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 6, 0, 1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Stone_Window" parent="SM_VK_Wall_Stone_Window_inst_233" index="0" unique_id=1289175029]
 cast_shadow = 2
@@ -1370,9 +1454,15 @@ metadata/extras = {
 
 [node name="SM_VK_Prop_FlowerBox_Daisy_inst_069" type="Node3D" parent="." unique_id=1444289363 instance=ExtResource("29_0ovi2")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 6.54999, 0.78, 1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window_inst_438" parent="." unique_id=2058976015 instance=ExtResource("6_2byfq")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 6, 3, 1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window" parent="SM_VK_Wall_Timber_Window_inst_438" index="0" unique_id=39566587]
 cast_shadow = 2
@@ -1385,6 +1475,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Timber_X_inst_065" parent="." unique_id=849775613 instance=ExtResource("30_15rnm")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 6, 5.8, 1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_X" parent="SM_VK_Wall_Timber_X_inst_065" index="0" unique_id=2132514337]
 cast_shadow = 2
@@ -1397,12 +1490,21 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Stone_inst_275" type="Node3D" parent="." unique_id=893301117 instance=ExtResource("27_dv2ll")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 6, 0, -1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Deco_Weeds_inst_256" type="Node3D" parent="." unique_id=1794942977 instance=ExtResource("26_3r1vq")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 6, 0, -1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window_inst_439" parent="." unique_id=311005383 instance=ExtResource("6_2byfq")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 6, 3, -1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window" parent="SM_VK_Wall_Timber_Window_inst_439" index="0" unique_id=39566587]
 cast_shadow = 2
@@ -1415,6 +1517,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Timber_inst_071" parent="." unique_id=925577555 instance=ExtResource("31_nthwu")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 6, 5.8, -1.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber" parent="SM_VK_Wall_Timber_inst_071" index="0" unique_id=715364610]
 cast_shadow = 2
@@ -1427,6 +1532,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Stone_Window_inst_234" parent="." unique_id=1305962182 instance=ExtResource("17_pm3lm")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 4.5, 0, -3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Stone_Window" parent="SM_VK_Wall_Stone_Window_inst_234" index="0" unique_id=1289175029]
 cast_shadow = 2
@@ -1439,9 +1547,15 @@ metadata/extras = {
 
 [node name="SM_VK_Prop_FlowerBox_Daisy_inst_070" type="Node3D" parent="." unique_id=1353058758 instance=ExtResource("29_0ovi2")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 4.5, 0.78, -3.55)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Door_inst_003" parent="." unique_id=1472773754 instance=ExtResource("32_6adlk")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 4.5, 3, -3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Door" parent="SM_VK_Wall_Timber_Door_inst_003" index="0" unique_id=1623559665]
 cast_shadow = 2
@@ -1454,6 +1568,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Timber_Window_inst_440" parent="." unique_id=1811648536 instance=ExtResource("6_2byfq")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 4.5, 5.8, -3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window" parent="SM_VK_Wall_Timber_Window_inst_440" index="0" unique_id=39566587]
 cast_shadow = 2
@@ -1466,9 +1583,15 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Stone_inst_276" type="Node3D" parent="." unique_id=374534554 instance=ExtResource("27_dv2ll")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.5, 0, -6)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window_inst_441" parent="." unique_id=476713819 instance=ExtResource("6_2byfq")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.5, 3, -6)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window" parent="SM_VK_Wall_Timber_Window_inst_441" index="0" unique_id=39566587]
 cast_shadow = 2
@@ -1481,6 +1604,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Timber_K_inst_085" parent="." unique_id=324897406 instance=ExtResource("28_t8he3")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.5, 5.8, -6)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_K" parent="SM_VK_Wall_Timber_K_inst_085" index="0" unique_id=1300598792]
 cast_shadow = 2
@@ -1493,15 +1619,27 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Stone_Door_inst_067" type="Node3D" parent="." unique_id=1848471513 instance=ExtResource("11_tdrs5")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.5, 0, -6)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Prop_Lantern_inst_062" type="Node3D" parent="." unique_id=59657134 instance=ExtResource("12_3ajrp")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0.45001, 2.55, -6.3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Prop_Planter_inst_052" type="Node3D" parent="." unique_id=426726168 instance=ExtResource("13_67b58")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 2.54999, 0, -6.75)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window_inst_442" parent="." unique_id=825868509 instance=ExtResource("6_2byfq")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.5, 3, -6)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window" parent="SM_VK_Wall_Timber_Window_inst_442" index="0" unique_id=39566587]
 cast_shadow = 2
@@ -1514,6 +1652,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Timber_X_inst_066" parent="." unique_id=1230554784 instance=ExtResource("30_15rnm")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.5, 5.8, -6)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_X" parent="SM_VK_Wall_Timber_X_inst_066" index="0" unique_id=2132514337]
 cast_shadow = 2
@@ -1526,6 +1667,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Stone_Window_inst_235" parent="." unique_id=1993846866 instance=ExtResource("17_pm3lm")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 3, 0, -4.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Stone_Window" parent="SM_VK_Wall_Stone_Window_inst_235" index="0" unique_id=1289175029]
 cast_shadow = 2
@@ -1538,9 +1682,15 @@ metadata/extras = {
 
 [node name="SM_VK_Prop_FlowerBox_Daisy_inst_071" type="Node3D" parent="." unique_id=17757862 instance=ExtResource("29_0ovi2")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 3.54999, 0.78, -4.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window_inst_443" parent="." unique_id=440900053 instance=ExtResource("6_2byfq")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 3, 3, -4.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber_Window" parent="SM_VK_Wall_Timber_Window_inst_443" index="0" unique_id=39566587]
 cast_shadow = 2
@@ -1553,6 +1703,9 @@ metadata/extras = {
 
 [node name="SM_VK_Wall_Timber_inst_072" parent="." unique_id=374849521 instance=ExtResource("31_nthwu")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 3, 5.8, -4.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Wall_Timber" parent="SM_VK_Wall_Timber_inst_072" index="0" unique_id=715364610]
 cast_shadow = 2
@@ -1565,60 +1718,117 @@ metadata/extras = {
 
 [node name="SM_VK_Corner_Stone_inst_244" type="Node3D" parent="." unique_id=278246368 instance=ExtResource("34_hxhnc")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Corner_Stone_inst_245" type="Node3D" parent="." unique_id=1066303107 instance=ExtResource("34_hxhnc")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 6, 0, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Corner_Stone_inst_246" type="Node3D" parent="." unique_id=354975261 instance=ExtResource("34_hxhnc")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 6, 0, -3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Corner_Stone_inst_247" type="Node3D" parent="." unique_id=8228226 instance=ExtResource("34_hxhnc")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 3, 0, -6)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Corner_Stone_inst_248" type="Node3D" parent="." unique_id=1325940602 instance=ExtResource("34_hxhnc")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 0, -6)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_InnerCorner_Stone_inst_005" type="Node3D" parent="." unique_id=1940927870 instance=ExtResource("35_u11fx")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, -3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Corner_Timber_inst_260" type="Node3D" parent="." unique_id=15280254 instance=ExtResource("36_tdkcl")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 3, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Corner_Timber_inst_261" type="Node3D" parent="." unique_id=1148649639 instance=ExtResource("36_tdkcl")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 6, 3, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Corner_Timber_inst_262" type="Node3D" parent="." unique_id=13252926 instance=ExtResource("36_tdkcl")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 6, 3, -3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Corner_Timber_inst_263" type="Node3D" parent="." unique_id=365905190 instance=ExtResource("36_tdkcl")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 3, 3, -6)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Corner_Timber_inst_264" type="Node3D" parent="." unique_id=45541786 instance=ExtResource("36_tdkcl")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 3, -6)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_InnerCorner_Timber_inst_008" type="Node3D" parent="." unique_id=539295543 instance=ExtResource("37_6y1eo")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 3, -3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Corner_Timber_inst_265" type="Node3D" parent="." unique_id=5342637 instance=ExtResource("36_tdkcl")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 5.8, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Corner_Timber_inst_266" type="Node3D" parent="." unique_id=1630092320 instance=ExtResource("36_tdkcl")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 6, 5.8, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Corner_Timber_inst_267" type="Node3D" parent="." unique_id=1291177173 instance=ExtResource("36_tdkcl")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 6, 5.8, -3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Corner_Timber_inst_268" type="Node3D" parent="." unique_id=1121413821 instance=ExtResource("36_tdkcl")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 3, 5.8, -6)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Corner_Timber_inst_269" type="Node3D" parent="." unique_id=1850550481 instance=ExtResource("36_tdkcl")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 5.8, -6)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_InnerCorner_Timber_inst_009" type="Node3D" parent="." unique_id=1097091592 instance=ExtResource("37_6y1eo")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 5.8, -3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Roof_LCorner_inst_009" parent="." unique_id=996069508 instance=ExtResource("38_01jyi")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8.6, 0)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Roof_LCorner" parent="SM_VK_Roof_LCorner_inst_009" index="0" unique_id=1724045717]
 cast_shadow = 2
@@ -1633,6 +1843,9 @@ metadata/extras = {
 
 [node name="SM_VK_Roof_Gable_inst_107" parent="." unique_id=373480522 instance=ExtResource("39_ip8i4")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 8.6, 0)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Roof_Gable" parent="SM_VK_Roof_Gable_inst_107" index="0" unique_id=1243848987]
 cast_shadow = 2
@@ -1647,6 +1860,9 @@ metadata/extras = {
 
 [node name="SM_VK_Roof_Gable_inst_108" parent="." unique_id=1549642507 instance=ExtResource("39_ip8i4")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 8.6, -4.5)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Roof_Gable" parent="SM_VK_Roof_Gable_inst_108" index="0" unique_id=1243848987]
 cast_shadow = 2
@@ -1661,12 +1877,21 @@ metadata/extras = {
 
 [node name="SM_VK_Chimney_inst_075" type="Node3D" parent="." unique_id=938186035 instance=ExtResource("40_uxj3w")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 4.5, 8.6, 0)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Turret_Corbel_inst_003" type="Node3D" parent="." unique_id=1970197683 instance=ExtResource("41_t4oq4")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 3, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Turret_Seg_inst_003" parent="." unique_id=1945498034 instance=ExtResource("42_5ulpd")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 3, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Turret_Seg" parent="SM_VK_Turret_Seg_inst_003" index="0" unique_id=1879585920]
 cast_shadow = 2
@@ -1679,6 +1904,9 @@ metadata/extras = {
 
 [node name="SM_VK_Turret_Seg_inst_004" parent="." unique_id=836033259 instance=ExtResource("42_5ulpd")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 5.8, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Turret_Seg" parent="SM_VK_Turret_Seg_inst_004" index="0" unique_id=1879585920]
 cast_shadow = 2
@@ -1691,6 +1919,9 @@ metadata/extras = {
 
 [node name="SM_VK_Turret_Seg_inst_005" parent="." unique_id=67596277 instance=ExtResource("42_5ulpd")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 8.6, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Turret_Seg" parent="SM_VK_Turret_Seg_inst_005" index="0" unique_id=1879585920]
 cast_shadow = 2
@@ -1703,6 +1934,9 @@ metadata/extras = {
 
 [node name="SM_VK_Turret_Cap_inst_003" parent="." unique_id=679058534 instance=ExtResource("43_n5vib")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 11.4, 3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Turret_Cap" parent="SM_VK_Turret_Cap_inst_003" index="0" unique_id=1085408126]
 cast_shadow = 2
@@ -1716,21 +1950,39 @@ metadata/extras = {
 
 [node name="SM_VK_Banner_Wall_inst_009" type="Node3D" parent="." unique_id=630781926 instance=ExtResource("45_m8dht")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3, 5.8, 0.9)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Prop_LampPost_inst_044" type="Node3D" parent="." unique_id=695045990 instance=ExtResource("46_a58d1")]
 transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, -4.59998, 0, 4.9)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Gallery_Timber_inst_004" type="Node3D" parent="." unique_id=854825690 instance=ExtResource("47_86cqd")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 4.5, 0, -3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Gallery_Side_inst_002" type="Node3D" parent="." unique_id=110369609 instance=ExtResource("48_tyelp")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 6, 0, -3)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Prop_BarrelStack_inst_034" type="Node3D" parent="." unique_id=1795086219 instance=ExtResource("49_oi2bg")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 4.59998, 0, -5.4)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Prop_Woodpile_inst_026" parent="." unique_id=1383660135 instance=ExtResource("50_7qe8u")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 5.40002, 0, -7.6)
+"cell_m": "3.0",
+"kit": "VillageHouse"
+})
 
 [node name="SM_VK_Prop_Woodpile" parent="SM_VK_Prop_Woodpile_inst_026" index="0" unique_id=1034047682]
 cast_shadow = 2

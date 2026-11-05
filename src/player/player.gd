@@ -8,13 +8,16 @@ class_name Player
 
 @export var walk_speed: float = 3.6
 @export var run_speed: float = 7.0
-@export var jump_velocity: float = 5.2
+@export var jump_velocity: float = 4.5
 @export var acceleration: float = 12.0
 @export var rotation_speed: float = 12.0
 @export var camera_rig_path: NodePath
 ## Levanta o modelo em relação à cápsula. O terreno é facetado (triângulos de 2 m),
 ## então sem isso o pé fica coplanar com a grama e some; alguns cm o deixam visível.
 @export var model_foot_offset: float = 0.04
+## Quanto abaixo do terreno o jogador pode ficar antes de ser resgatado (m).
+## Pega o caso de cair para fora do mundo quando um chunk ainda não carregou.
+@export var void_margin: float = 4.0
 
 @onready var model: Node3D = $Model
 
@@ -27,6 +30,7 @@ var wants_run: bool = false
 var _camera_rig: CameraRig
 var _anim: AnimationPlayer
 var _current: String = ""
+var _world: Node
 
 
 func _ready() -> void:
@@ -35,6 +39,7 @@ func _ready() -> void:
 	_camera_rig = get_node_or_null(camera_rig_path)
 	if _camera_rig == null:
 		_camera_rig = get_tree().get_first_node_in_group("camera_rig") as CameraRig
+	_world = get_tree().get_first_node_in_group("world")
 	_anim = _find_animation_player(model)
 	if _anim:
 		_play("Idle")
@@ -81,7 +86,21 @@ func _physics_process(delta: float) -> void:
 		rotation.y = lerp_angle(rotation.y, target_angle, rotation_speed * delta)
 
 	move_and_slide()
+	_check_void()
 	_update_animation()
+
+
+## Se o jogador caiu abaixo do terreno (chunk não carregou, buraco no mundo),
+## devolve ele para a altura do chão no ponto atual. Roda todo frame, então
+## basta o chunk montar para ele pousar de verdade.
+func _check_void() -> void:
+	if _world == null or not _world.has_method("ground_height"):
+		return
+	var p := global_position
+	var gy: float = _world.ground_height(p.x, p.z)
+	if p.y < gy - void_margin:
+		global_position = Vector3(p.x, gy + 2.0, p.z)
+		velocity = Vector3.ZERO
 
 
 func _update_animation() -> void:
