@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://bmainvethy0n"]
+[gd_scene load_steps=13 format=3 uid="uid://bmainvethy0n"]
 
 [ext_resource type="Script" path="res://src/world/vetheryon_world.gd" id="1_world"]
 [ext_resource type="PackedScene" path="res://src/player/player.tscn" id="2_player"]
@@ -6,6 +6,9 @@
 [ext_resource type="Script" path="res://src/ui/hud.gd" id="4_hud"]
 [ext_resource type="Script" path="res://src/player/camera_rig.gd" id="6_camrig"]
 [ext_resource type="Script" path="res://src/ui/start_screen.gd" id="7_start"]
+[ext_resource type="Script" path="res://src/game_root.gd" id="8_root"]
+[ext_resource type="Script" path="res://src/ui/loading_screen.gd" id="9_loading"]
+[ext_resource type="Script" path="res://src/ui/pause_menu.gd" id="10_pause"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.25, 0.42, 0.7, 1)
@@ -28,6 +31,7 @@ fog_light_color = Color(0.72, 0.78, 0.85, 1)
 fog_density = 0.0026
 
 [node name="Main" type="Node3D"]
+script = ExtResource("8_root")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Env")
@@ -67,3 +71,11 @@ player_path = NodePath("../Player")
 [node name="StartScreen" type="CanvasLayer" parent="."]
 layer = 10
 script = ExtResource("7_start")
+
+[node name="LoadingScreen" type="CanvasLayer" parent="."]
+layer = 11
+script = ExtResource("9_loading")
+
+[node name="PauseMenu" type="CanvasLayer" parent="."]
+layer = 9
+script = ExtResource("10_pause")

@@ -47,6 +47,7 @@ var _baked: Dictionary = {}          # path -> {mesh, aabb} (construcao cozida)
 var _player_h := 1.9                 # altura do personagem (medida no _ready)
 var _pending_structs: Array = []     # [{coord, entry}] esperando cozinhar (fora do orçamento do frame)
 var _bake_budget_ms := 40.0          # tempo maximo por frame cozinhando predios
+var _spawn_ready := false            # os chunks do spawn ja montaram (tela de carregamento)
 
 
 ## Todos os biomas do gerador (os 4 padrão + os 5 extras do LowLand Forge).
@@ -70,23 +71,44 @@ func _ready() -> void:
 	_lib.rock_color = _gen.params.rock_color
 	_lib.build(world_seed)
 	_terrain_shader = load("res://addons/lowland_forge/shaders/terrain_baked.gdshader")
-	await get_tree().process_frame
-	# Leva o jogador ao ponto de spawn do mundo (o gerador escolhe um lugar com
-	# todos os biomas perto). Sem isso ele ficava na origem (0,0), longe de tudo.
+	# Leva o jogador ao ponto de spawn do mundo ANTES de pedir os chunks: senão o
+	# mundo pediria (e calcularia) os 5 chunks da origem (0,0), longe de tudo, e
+	# ainda atrasaria os chunks do spawn.
 	if _player:
 		var sp := _gen.spawn_xz
 		_player.global_position = Vector3(sp.x, _gen.get_height(sp.x, sp.y) + 2.0, sp.y)
-	_update_center(true)
-	# Espera o chunk do spawn montar antes de soltar o jogador no chão.
-	for _i in 600:
-		if _chunks.has(_center):
-			break
-		await get_tree().physics_frame
-		_mount_pending()
-	if _player:
-		var h := _gen.get_height(_player.global_position.x, _player.global_position.z)
-		_player.global_position.y = h + 2.0
 		_player_h = _measure_height(_player.get_node_or_null("Model"))
+	_spawn_ready = false
+	_update_center(true)
+	await get_tree().process_frame
+
+
+## True quando os 5 chunks em volta do jogador estão montados (e as estruturas
+## deles já foram montadas). É o que a tela de carregamento espera.
+func is_ready() -> bool:
+	if not _spawn_ready:
+		for off in CHUNK_OFFSETS:
+			if not _chunks.has(_center + off):
+				return false
+		if not _pending_structs.is_empty():
+			return false
+		_spawn_ready = true
+	return _spawn_ready
+
+
+## Progresso do carregamento (0..1) para a tela de carregamento.
+func loading_progress() -> float:
+	var want := 0
+	var got := 0
+	for off in CHUNK_OFFSETS:
+		want += 1
+		if _chunks.has(_center + off):
+			got += 1
+	var chunk_frac := float(got) / float(maxi(want, 1))
+	# Os prédios pendentes são a parte final; descontam um pouco do progresso.
+	if not _pending_structs.is_empty():
+		chunk_frac *= 0.85
+	return clampf(chunk_frac, 0.0, 1.0)
 
 
 ## Params do mundo: presets de relevo/água + TODOS os biomas ligados. O ruído de
@@ -130,6 +152,7 @@ func _update_center(force: bool) -> void:
 	if c == _center and not force:
 		return
 	_center = c
+	_spawn_ready = false   # mudou de área: a tela de carregamento espera de novo
 	var wanted := {}
 	for off in CHUNK_OFFSETS:
 		wanted[c + off] = true
