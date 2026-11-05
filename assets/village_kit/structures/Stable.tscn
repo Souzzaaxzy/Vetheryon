@@ -1,0 +1,98 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://kit/models/VK/Wall/SM_VK_Wall_Stall.glb" id="2_4q6vw"]
+[ext_resource type="PackedScene" path="res://kit/models/VK/Wall/SM_VK_Wall_Barn.glb" id="4_kla0t"]
+[ext_resource type="PackedScene" path="res://kit/models/VK/Corner/SM_VK_Corner_Barn.glb" id="5_k8kbe"]
+[ext_resource type="PackedScene" path="res://kit/models/VK/RoofThatch/SM_VK_RoofThatch_Gable_Planks.glb" id="6_7rafx"]
+[ext_resource type="PackedScene" path="res://kit/models/VK/RoofThatch/SM_VK_RoofThatch_Mid.glb" id="7_jayi5"]
+[ext_resource type="PackedScene" path="res://kit/models/VK/Prop/SM_VK_Prop_Trough.glb" id="8_ovo4y"]
+[ext_resource type="PackedScene" path="res://kit/models/VK/Prop/SM_VK_Prop_HayBale.glb" id="9_e5ryc"]
+[ext_resource type="PackedScene" path="res://kit/models/VK/Prop/SM_VK_Prop_Signpost.glb" id="10_wgyu8"]
+[ext_resource type="PackedScene" path="res://kit/models/VK/Prop/SM_VK_Prop_Fence.glb" id="11_lpuef"]
+[ext_resource type="PackedScene" path="res://kit/models/VK/Prop/SM_VK_Prop_FenceGate.glb" id="12_72bxl"]
+
+[node name="Stable" type="Node3D" unique_id=1379883437]
+StructureName = "Stable"
+Builder = "build_stable"
+ExportVersion = "2026-10-24 pilot"
+
+[node name="SM_VK_Wall_Stall_inst_006" type="Node3D" parent="." unique_id=275131050 instance=ExtResource("2_4q6vw")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, 3)
+
+[node name="SM_VK_Wall_Barn_inst_050" type="Node3D" parent="." unique_id=1284545875 instance=ExtResource("4_kla0t")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -3, 0, -3)
+
+[node name="SM_VK_Wall_Stall_inst_007" type="Node3D" parent="." unique_id=724663026 instance=ExtResource("2_4q6vw")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3)
+
+[node name="SM_VK_Wall_Barn_inst_051" type="Node3D" parent="." unique_id=1884613451 instance=ExtResource("4_kla0t")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, -3)
+
+[node name="SM_VK_Wall_Stall_inst_008" type="Node3D" parent="." unique_id=651193623 instance=ExtResource("2_4q6vw")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, 3)
+
+[node name="SM_VK_Wall_Barn_inst_052" type="Node3D" parent="." unique_id=1541595174 instance=ExtResource("4_kla0t")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 3, 0, -3)
+
+[node name="SM_VK_Wall_Barn_inst_053" type="Node3D" parent="." unique_id=670663086 instance=ExtResource("4_kla0t")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -4.5, 0, 1.5)
+
+[node name="SM_VK_Wall_Barn_inst_054" type="Node3D" parent="." unique_id=2110340388 instance=ExtResource("4_kla0t")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 4.5, 0, -1.5)
+
+[node name="SM_VK_Wall_Barn_inst_055" type="Node3D" parent="." unique_id=594070883 instance=ExtResource("4_kla0t")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -4.5, 0, -1.5)
+
+[node name="SM_VK_Wall_Barn_inst_056" type="Node3D" parent="." unique_id=568744811 instance=ExtResource("4_kla0t")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 4.5, 0, 1.5)
+
+[node name="SM_VK_Corner_Barn_inst_024" type="Node3D" parent="." unique_id=274723569 instance=ExtResource("5_k8kbe")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.5, 0, 3)
+
+[node name="SM_VK_Corner_Barn_inst_025" type="Node3D" parent="." unique_id=611496692 instance=ExtResource("5_k8kbe")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 4.5, 0, 3)
+
+[node name="SM_VK_Corner_Barn_inst_026" type="Node3D" parent="." unique_id=540218185 instance=ExtResource("5_k8kbe")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 4.5, 0, -3)
+
+[node name="SM_VK_Corner_Barn_inst_027" type="Node3D" parent="." unique_id=159064963 instance=ExtResource("5_k8kbe")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -4.5, 0, -3)
+
+[node name="SM_VK_RoofThatch_Gable_Planks_inst_013" type="Node3D" parent="." unique_id=2068101377 instance=ExtResource("6_7rafx")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -3, 4.2, 0)
+
+[node name="SM_VK_RoofThatch_Mid_inst_015" type="Node3D" parent="." unique_id=648545888 instance=ExtResource("7_jayi5")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.2, 0)
+
+[node name="SM_VK_RoofThatch_Gable_Planks_inst_014" type="Node3D" parent="." unique_id=1662431269 instance=ExtResource("6_7rafx")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 4.2, 0)
+
+[node name="SM_VK_Prop_Trough_inst_016" type="Node3D" parent="." unique_id=1893332288 instance=ExtResource("8_ovo4y")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0, 4.6)
+
+[node name="SM_VK_Prop_HayBale_inst_014" type="Node3D" parent="." unique_id=358515011 instance=ExtResource("9_e5ryc")]
+transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, 3.89999, 0, 4.5)
+
+[node name="SM_VK_Prop_Signpost_inst_004" type="Node3D" parent="." unique_id=1308190755 instance=ExtResource("10_wgyu8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 4.8)
+
+[node name="SM_VK_Prop_Fence_inst_196" type="Node3D" parent="." unique_id=319579565 instance=ExtResource("11_lpuef")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, 8.5)
+
+[node name="SM_VK_Prop_FenceGate_inst_027" type="Node3D" parent="." unique_id=1522207887 instance=ExtResource("12_72bxl")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 8.5)
+
+[node name="SM_VK_Prop_Fence_inst_197" type="Node3D" parent="." unique_id=305312308 instance=ExtResource("11_lpuef")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, 8.5)
+
+[node name="SM_VK_Prop_Fence_inst_198" type="Node3D" parent="." unique_id=1487392375 instance=ExtResource("11_lpuef")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -4.5, 0, 4.675)
+
+[node name="SM_VK_Prop_Fence_inst_199" type="Node3D" parent="." unique_id=575962922 instance=ExtResource("11_lpuef")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -4.5, 0, 7.225)
+
+[node name="SM_VK_Prop_Fence_inst_200" type="Node3D" parent="." unique_id=197357949 instance=ExtResource("11_lpuef")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 4.5, 0, 4.675)
+
+[node name="SM_VK_Prop_Fence_inst_201" type="Node3D" parent="." unique_id=593627229 instance=ExtResource("11_lpuef")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 4.5, 0, 7.225)

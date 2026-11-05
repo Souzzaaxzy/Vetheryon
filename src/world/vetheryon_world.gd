@@ -38,17 +38,27 @@ var _center := Vector2i(999999, 999999)
 var _mutex := Mutex.new()
 var _results: Array = []           # [ {coord, block} ] prontos para montar
 
+var _planner: VillagePlanner
+var _struct_scenes: Dictionary = {}   # path -> PackedScene
+var _struct_faces: Dictionary = {}    # path -> PackedVector3Array (colisao local)
+
+
+## Todos os biomas do gerador (os 4 padrão + os 5 extras do LowLand Forge).
+const ALL_BIOMES: Array[String] = [
+	"Meadow", "Pine Forest", "Birch Woods", "Old Growth",
+	"Desert", "Palm Coast", "Frozen Highlands", "Ash Barrens", "Drowned Marsh",
+]
+
 
 func _ready() -> void:
 	_player = get_node_or_null(player_path)
 	_gen = LFTerrainGenerator.new()
-	_gen.params = LFMapPresets.make(preset)
-	var d := density
-	_gen.params.prop_density = d
-	_gen.params.tree_density = d
-	_gen.params.rock_density = d
-	_gen.params.ground_cover_density = d
+	_gen.params = _make_params()
 	_gen.setup(world_seed)
+	# Vilas e estruturas: planejadas agora (achatam o terreno via stamps) para
+	# valerem em todo get_height/props dos chunks gerados depois.
+	_planner = VillagePlanner.new()
+	_planner.plan(_gen, world_seed)
 	_lib = LFPropMeshes.new()
 	_lib.rock_color = _gen.params.rock_color
 	_lib.build(world_seed)
@@ -64,6 +74,28 @@ func _ready() -> void:
 	if _player:
 		var h := _gen.get_height(_player.global_position.x, _player.global_position.z)
 		_player.global_position.y = h + 2.0
+
+
+## Params do mundo: presets de relevo/água + TODOS os biomas ligados. O ruído de
+## clima (que o setup faz a partir da seed) distribui os biomas aleatoriamente:
+## cada região pega o bioma que combina mais com a temperatura/umidade dela, então
+## o mesmo mapa nunca tem os biomas nos mesmos lugares.
+func _make_params() -> LFMapParams:
+	var p := LFMapPresets.make(preset)
+	var have := {}
+	for b in p.biomes:
+		have[b.name] = true
+	for b in LFBiomePresets.all():
+		if not have.has(b.name):
+			p.biomes.append(b)
+	for b in p.biomes:
+		b.enabled = b.name in ALL_BIOMES
+	var d := density
+	p.prop_density = d
+	p.tree_density = d
+	p.rock_density = d
+	p.ground_cover_density = d
+	return p
 
 
 func _physics_process(_delta: float) -> void:
@@ -255,6 +287,8 @@ func _mount_chunk(coord: Vector2i, data: Dictionary) -> void:
 	for prop_body in _prop_bodies(bd.get("colliders", []), bd.get("log_colliders", []), bd.get("cliff_colliders", [])):
 		root.add_child(prop_body)
 
+	_place_structures(coord, root)
+
 	add_child(root)
 	_chunks[coord] = root
 
@@ -332,6 +366,101 @@ static func _sphere_faces(f: PackedVector3Array, c: Vector3, r: float) -> void:
 			var d: Vector3 = pts[j + 1][i]
 			var e: Vector3 = pts[j + 1][(i + 1) % segs]
 			f.append_array(PackedVector3Array([a, b, d, b, e, d]))
+
+
+## Coloca as construcoes (vilas e estruturas soltas) cujo centro cai neste chunk,
+## com colisao estatica gerada a partir das malhas (o kit e CC0 e nao traz colisao
+## no Godot padrao — a dele vinha de scripts C#).
+func _place_structures(coord: Vector2i, root: Node3D) -> void:
+	for entry in _structs_in(coord):
+		var path: String = entry["scene"]
+		var scene: PackedScene = _struct_scenes.get(path)
+		if scene == null:
+			scene = load(path)
+			if scene == null:
+				continue
+			_struct_scenes[path] = scene
+		var inst: Node3D = scene.instantiate()
+		var pos: Vector3 = entry["pos"]
+		inst.position = pos - root.position
+		inst.rotation.y = entry["yaw"]
+		inst.name = "Struct_%s" % path.get_file().get_basename()
+		root.add_child(inst)
+		var body := _structure_body(path, inst)
+		if body:
+			root.add_child(body)
+
+
+## As construcoes cujo centro cai no chunk `coord`.
+func _structs_in(coord: Vector2i) -> Array:
+	var out: Array = []
+	if _planner == null:
+		return out
+	for v: Dictionary in _planner.villages:
+		for b: Dictionary in v["buildings"]:
+			if _chunk_of(b["pos"]) == coord:
+				out.append(b)
+	for sc: Dictionary in _planner.scattered:
+		if _chunk_of(sc["pos"]) == coord:
+			out.append(sc)
+	return out
+
+
+func _chunk_of(p: Vector3) -> Vector2i:
+	return Vector2i(floori(p.x / CHUNK), floori(p.z / CHUNK))
+
+
+## Um StaticBody3D com a malha das construcoes virada em ConcavePolygonShape3D
+## (faces guardadas em cache por cena).
+func _structure_body(path: String, inst: Node3D) -> StaticBody3D:
+	var cached = _struct_faces.get(path)
+	var faces: PackedVector3Array
+	if cached == null:
+		faces = _gather_faces(inst)
+		_struct_faces[path] = faces
+	else:
+		faces = cached
+	if faces.is_empty():
+		return null
+	var shape := ConcavePolygonShape3D.new()
+	shape.backface_collision = true
+	shape.set_faces(faces)
+	var cs := CollisionShape3D.new()
+	cs.shape = shape
+	var body := StaticBody3D.new()
+	body.name = "StructBody_%s" % path.get_file().get_basename()
+	body.add_to_group(LFTileBaker.GROUP_TREE, true)
+	body.add_child(cs)
+	body.position = inst.position
+	body.rotation.y = inst.rotation.y
+	return body
+
+
+func _gather_faces(n: Node) -> PackedVector3Array:
+	var faces := PackedVector3Array()
+	_collect_faces(n, Transform3D(), faces)
+	return faces
+
+
+func _collect_faces(n: Node, xf: Transform3D, faces: PackedVector3Array) -> void:
+	var cur := xf
+	if n is Node3D:
+		cur = xf * (n as Node3D).transform
+	if n is MeshInstance3D:
+		var mesh: Mesh = (n as MeshInstance3D).mesh
+		if mesh:
+			for si in mesh.get_surface_count():
+				var arrays: Array = mesh.surface_get_arrays(si)
+				if arrays.size() <= Mesh.ARRAY_INDEX or arrays[Mesh.ARRAY_VERTEX] == null or arrays[Mesh.ARRAY_INDEX] == null:
+					continue
+				var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+				var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+				for k in range(0, idx.size(), 3):
+					faces.append(cur * verts[idx[k]])
+					faces.append(cur * verts[idx[k + 1]])
+					faces.append(cur * verts[idx[k + 2]])
+	for c in n.get_children():
+		_collect_faces(c, cur, faces)
 
 
 func _prop_material(kind: int) -> Material:

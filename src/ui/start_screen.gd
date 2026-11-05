@@ -55,14 +55,10 @@ func _build() -> void:
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(holder)
 
-	# Painel do botão (arredondado, semi-transparente). PanelContainer abraça o
-	# texto, então o CenterContainer consegue centralizá-lo de verdade.
+	# Painel do botão: só o texto, sem fundo nem borda (fundo transparente).
+	# PanelContainer abraça o texto, então o CenterContainer centraliza de verdade.
 	_panel = PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.08, 0.06, 0.05, 0.55)
-	sb.border_color = Color(1.0, 0.86, 0.5, 0.9)
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(14)
+	var sb := StyleBoxEmpty.new()
 	sb.content_margin_left = 40
 	sb.content_margin_right = 40
 	sb.content_margin_top = 18
