@@ -24,6 +24,9 @@ const MAX_PER_FRAME := 1                  # montagens por frame (limita o travam
 @export var preset: String = "Rolling Plains"
 @export var density: float = 0.5
 @export var player_path: NodePath
+## Altura do personagem (m) usada para dimensionar os predios: a porta fica
+## `door_margin` acima disso e o predio inteiro e escalado junto.
+@export var door_margin: float = 0.10
 
 var _gen: LFTerrainGenerator
 var _lib: LFPropMeshes
@@ -40,7 +43,10 @@ var _results: Array = []           # [ {coord, block} ] prontos para montar
 
 var _planner: VillagePlanner
 var _struct_scenes: Dictionary = {}   # path -> PackedScene
-var _struct_faces: Dictionary = {}    # path -> PackedVector3Array (colisao local)
+var _baked: Dictionary = {}          # path -> {mesh, aabb} (construcao cozida)
+var _player_h := 1.9                 # altura do personagem (medida no _ready)
+var _pending_structs: Array = []     # [{coord, entry}] esperando cozinhar (fora do orçamento do frame)
+var _bake_budget_ms := 40.0          # tempo maximo por frame cozinhando predios
 
 
 ## Todos os biomas do gerador (os 4 padrão + os 5 extras do LowLand Forge).
@@ -80,6 +86,7 @@ func _ready() -> void:
 	if _player:
 		var h := _gen.get_height(_player.global_position.x, _player.global_position.z)
 		_player.global_position.y = h + 2.0
+		_player_h = _measure_height(_player.get_node_or_null("Model"))
 
 
 ## Params do mundo: presets de relevo/água + TODOS os biomas ligados. O ruído de
@@ -114,6 +121,7 @@ func _physics_process(_delta: float) -> void:
 	if _player:
 		_update_center(false)
 	_mount_pending()
+	_flush_pending_structs()
 
 
 func _update_center(force: bool) -> void:
@@ -380,27 +388,203 @@ static func _sphere_faces(f: PackedVector3Array, c: Vector3, r: float) -> void:
 			f.append_array(PackedVector3Array([a, b, d, b, e, d]))
 
 
-## Coloca as construcoes (vilas e estruturas soltas) cujo centro cai neste chunk,
-## com colisao estatica gerada a partir das malhas (o kit e CC0 e nao traz colisao
-## no Godot padrao — a dele vinha de scripts C#).
+## Coloca as construcoes cujo centro cai neste chunk. Cada TIPO de construcao e
+## cozido UMA vez em: uma malha unica (1 draw call, em vez de ~100 MeshInstance3D)
+## e uma casca de colisao unica. Depois so instanciamos a versao pronta.
 func _place_structures(coord: Vector2i, root: Node3D) -> void:
+	var t0 := Time.get_ticks_msec()
 	for entry in _structs_in(coord):
 		var path: String = entry["scene"]
-		var scene: PackedScene = _struct_scenes.get(path)
-		if scene == null:
-			scene = load(path)
-			if scene == null:
+		var baked = _baked.get(path)
+		if not (baked is Dictionary):
+			# Cozinhar um predio custa ~100 ms; se passar do orçamento do frame,
+			# adia para nao travar. O resto sai nos frames seguintes.
+			if Time.get_ticks_msec() - t0 > _bake_budget_ms:
+				_pending_structs.append({"coord": coord, "entry": entry})
 				continue
-			_struct_scenes[path] = scene
-		var inst: Node3D = scene.instantiate()
-		var pos: Vector3 = entry["pos"]
-		inst.position = pos - root.position
-		inst.rotation.y = entry["yaw"]
-		inst.name = "Struct_%s" % path.get_file().get_basename()
-		root.add_child(inst)
-		var body := _structure_body(path, inst)
-		if body:
-			root.add_child(body)
+			baked = _bake_structure(path)
+			if (baked as Dictionary).is_empty():
+				continue
+			_baked[path] = baked
+		_instantiate_structure(baked, entry, root)
+
+
+func _instantiate_structure(baked: Dictionary, entry: Dictionary, root: Node3D) -> void:
+	var path: String = entry["scene"]
+	var pos: Vector3 = entry["pos"]
+	var yaw: float = entry["yaw"]
+	var mi := MeshInstance3D.new()
+	mi.mesh = baked["mesh"]
+	mi.name = "Struct_%s" % path.get_file().get_basename()
+	mi.position = pos - root.position
+	mi.rotation.y = yaw
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	var aabb: AABB = baked["aabb"]
+	var body := StaticBody3D.new()
+	body.name = "StructBody_%s" % path.get_file().get_basename()
+	body.add_to_group(LFTileBaker.GROUP_TREE, true)
+	var shape := BoxShape3D.new()
+	shape.size = aabb.size
+	var cs := CollisionShape3D.new()
+	cs.shape = shape
+	cs.position = aabb.position + aabb.size * 0.5
+	body.add_child(cs)
+	body.position = mi.position
+	body.rotation.y = yaw
+	root.add_child(body)
+
+
+## Monta as estruturas adiadas, respeitando o orçamento de tempo por frame.
+func _flush_pending_structs() -> void:
+	if _pending_structs.is_empty():
+		return
+	var t0 := Time.get_ticks_msec()
+	var still: Array = []
+	for e: Dictionary in _pending_structs:
+		var root: Node3D = _chunks.get(e["coord"])
+		if root == null:
+			continue   # chunk ja foi liberado
+		var path: String = e["entry"]["scene"]
+		var baked = _baked.get(path)
+		if not (baked is Dictionary):
+			if Time.get_ticks_msec() - t0 > _bake_budget_ms:
+				still.append(e)
+				continue
+			baked = _bake_structure(path)
+			if (baked as Dictionary).is_empty():
+				continue
+			_baked[path] = baked
+		_instantiate_structure(baked, e["entry"], root)
+	_pending_structs = still
+
+
+## Cozinha uma construcao: junta todas as malhas numa so (draw calls) e todas as
+## faces de colisao num ConcavePolygonShape3D (local, sem o deslocamento do chunk).
+func _bake_structure(path: String) -> Dictionary:
+	var scene: PackedScene = _struct_scenes.get(path)
+	if scene == null:
+		scene = load(path)
+		if scene == null:
+			return {}
+		_struct_scenes[path] = scene
+	var inst: Node3D = scene.instantiate()
+	# Escala o predio inteiro para a porta ficar `door_margin` acima do personagem.
+	var door_h := _door_height(inst)
+	var sc := 1.0
+	if door_h > 0.2:
+		sc = (_player_h + door_margin) / door_h
+	var base := Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3.ZERO)
+	var surfaces: Array = []   # [ [material, PackedVector3Array verts] ]
+	var faces := PackedVector3Array()
+	_collect(inst, base, surfaces, faces)
+	inst.free()
+	# Caixa de colisao: muito mais barata que um trimesh (que aqui passava de
+	# 100 mil triangulos por predio). O predio nao tem interior, entao uma caixa
+	# bloqueia igual.
+	var aabb := AABB()
+	var first := true
+	for v in faces:
+		if first:
+			aabb = AABB(v, Vector3.ZERO)
+			first = false
+		else:
+			aabb = aabb.expand(v)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for surf: Array in surfaces:
+		var mat: Material = surf[0]
+		var verts: PackedVector3Array = surf[1]
+		for i in range(0, verts.size(), 3):
+			st.set_smooth_group(-1)
+			st.set_normal(Vector3.UP)
+			if mat:
+				st.set_material(mat)
+			st.add_vertex(verts[i])
+			st.add_vertex(verts[i + 1])
+			st.add_vertex(verts[i + 2])
+	var mesh: ArrayMesh = st.commit()
+	return {"mesh": mesh, "aabb": aabb}
+
+
+## Altura da porta de um predio (a maior porta), em espaco local.
+func _door_height(root: Node) -> float:
+	var best := 0.0
+	for n in _all_nodes(root):
+		if n is Node3D and ("Door" in n.name) and not (n is MeshInstance3D):
+			var a := _local_aabb(n, Transform3D())
+			if a.size.y > best and a.size.y < 8.0:
+				best = a.size.y
+	return best
+
+
+func _all_nodes(n: Node) -> Array:
+	var o: Array = [n]
+	for c in n.get_children():
+		o.append_array(_all_nodes(c))
+	return o
+
+
+func _local_aabb(n: Node, xf: Transform3D) -> AABB:
+	var out := AABB()
+	var first := true
+	var cur := xf
+	if n is Node3D:
+		cur = xf * (n as Node3D).transform
+	if n is MeshInstance3D:
+		var m: Mesh = (n as MeshInstance3D).mesh
+		if m:
+			var a: AABB = cur * m.get_aabb()
+			out = a
+			first = false
+	for c in n.get_children():
+		var ca := _local_aabb(c, cur)
+		if ca.size == Vector3.ZERO and ca.position == Vector3.ZERO:
+			continue
+		if first:
+			out = ca
+			first = false
+		else:
+			out = out.merge(ca)
+	return out
+
+
+## Altura visual (Y) de um no (para medir o personagem).
+func _measure_height(n: Node) -> float:
+	if n == null:
+		return 1.9
+	var a := _local_aabb(n, Transform3D())
+	return maxf(a.size.y, 0.5)
+
+
+func _collect(n: Node, xf: Transform3D, surfaces: Array, faces: PackedVector3Array) -> void:
+	var cur := xf
+	if n is Node3D:
+		cur = xf * (n as Node3D).transform
+	if n is MeshInstance3D:
+		var mesh: Mesh = (n as MeshInstance3D).mesh
+		if mesh:
+			for si in mesh.get_surface_count():
+				var arrays: Array = mesh.surface_get_arrays(si)
+				if arrays.size() <= Mesh.ARRAY_INDEX or arrays[Mesh.ARRAY_VERTEX] == null or arrays[Mesh.ARRAY_INDEX] == null:
+					continue
+				var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+				var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+				var mat: Material = mesh.surface_get_material(si)
+				var out := PackedVector3Array()
+				for k in range(0, idx.size(), 3):
+					var a := cur * verts[idx[k]]
+					var b := cur * verts[idx[k + 1]]
+					var c := cur * verts[idx[k + 2]]
+					out.append(a)
+					out.append(b)
+					out.append(c)
+					faces.append(a)
+					faces.append(b)
+					faces.append(c)
+				surfaces.append([mat, out])
+	for c in n.get_children():
+		_collect(c, cur, surfaces, faces)
 
 
 ## As construcoes cujo centro cai no chunk `coord`.
@@ -420,59 +604,6 @@ func _structs_in(coord: Vector2i) -> Array:
 
 func _chunk_of(p: Vector3) -> Vector2i:
 	return Vector2i(floori(p.x / CHUNK), floori(p.z / CHUNK))
-
-
-## Um StaticBody3D com a malha das construcoes virada em ConcavePolygonShape3D
-## (faces guardadas em cache por cena).
-func _structure_body(path: String, inst: Node3D) -> StaticBody3D:
-	var cached = _struct_faces.get(path)
-	var faces: PackedVector3Array
-	if cached == null:
-		faces = _gather_faces(inst)
-		_struct_faces[path] = faces
-	else:
-		faces = cached
-	if faces.is_empty():
-		return null
-	var shape := ConcavePolygonShape3D.new()
-	shape.backface_collision = true
-	shape.set_faces(faces)
-	var cs := CollisionShape3D.new()
-	cs.shape = shape
-	var body := StaticBody3D.new()
-	body.name = "StructBody_%s" % path.get_file().get_basename()
-	body.add_to_group(LFTileBaker.GROUP_TREE, true)
-	body.add_child(cs)
-	body.position = inst.position
-	body.rotation.y = inst.rotation.y
-	return body
-
-
-func _gather_faces(n: Node) -> PackedVector3Array:
-	var faces := PackedVector3Array()
-	_collect_faces(n, Transform3D(), faces)
-	return faces
-
-
-func _collect_faces(n: Node, xf: Transform3D, faces: PackedVector3Array) -> void:
-	var cur := xf
-	if n is Node3D:
-		cur = xf * (n as Node3D).transform
-	if n is MeshInstance3D:
-		var mesh: Mesh = (n as MeshInstance3D).mesh
-		if mesh:
-			for si in mesh.get_surface_count():
-				var arrays: Array = mesh.surface_get_arrays(si)
-				if arrays.size() <= Mesh.ARRAY_INDEX or arrays[Mesh.ARRAY_VERTEX] == null or arrays[Mesh.ARRAY_INDEX] == null:
-					continue
-				var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-				var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
-				for k in range(0, idx.size(), 3):
-					faces.append(cur * verts[idx[k]])
-					faces.append(cur * verts[idx[k + 1]])
-					faces.append(cur * verts[idx[k + 2]])
-	for c in n.get_children():
-		_collect_faces(c, cur, faces)
 
 
 func _prop_material(kind: int) -> Material:

@@ -100,29 +100,21 @@ func plan(gen: LFTerrainGenerator, seed_value: int) -> void:
 	_plan_scattered(gen)
 
 
+## Raio aproximado (m) por tipo de predio. Fixo de propósito: medir instanciando
+## cada cena custava caro no inicio (o planejamento travava o jogo).
+const FOOTPRINT_BIG := ["TownHall", "Chapel", "Inn", "Storehouse", "Longhouse",
+	"MerchantHouse", "Terrace", "Watermill", "Windmill", "Barn", "Brewery", "Stable", "Granary"]
+const FOOTPRINT_SMALL := ["Shack_Planks", "Apiary", "Pigsty", "Lavoir", "Camp",
+	"FisherHut", "CharcoalBurner", "SawpitYard", "Smokehouse", "Pottery", "DyersYard", "Mine"]
+
+
 func _load_footprints() -> void:
 	if not _footprints.is_empty():
 		return
-	_scan_dir(STRUCT_DIR, ".tscn")
-	_scan_dir(LANDMARK_DIR, ".glb")
-
-
-func _scan_dir(dir_path: String, ext: String) -> void:
-	var dir := DirAccess.open(dir_path)
-	if dir == null:
-		return
-	for f in dir.get_files():
-		if not f.ends_with(ext):
-			continue
-		var path := dir_path + f
-		var ps: PackedScene = load(path)
-		if ps == null:
-			continue
-		var n: Node3D = ps.instantiate()
-		var aabb := _scene_aabb(n)
-		n.free()
-		var r := maxf(aabb.size.x, aabb.size.z) * 0.5 + 1.0
-		_footprints[path] = maxf(r, 2.0)
+	for n in FOOTPRINT_BIG:
+		_footprints[STRUCT_DIR + n + ".tscn"] = 11.0
+	for n in FOOTPRINT_SMALL:
+		_footprints[STRUCT_DIR + n + ".tscn"] = 5.0
 
 
 func _plan_villages(gen: LFTerrainGenerator) -> void:
@@ -151,7 +143,7 @@ func _plan_villages(gen: LFTerrainGenerator) -> void:
 func _place_village(gen: LFTerrainGenerator, near: Vector2, placed: Array, radius: float) -> void:
 	var c := near
 	var found := false
-	for _try in 30:
+	for _try in 8:
 		if _spot_ok(gen, c, placed, radius * 1.6):
 			found = true
 			break
@@ -278,23 +270,18 @@ func _biome_at(gen: LFTerrainGenerator, c: Vector2) -> String:
 	return ""
 
 
-## Um ponto bom para uma vila/estrutura: em terra, plano e longe dos outros.
+## Um ponto bom para uma vila/estrutura: em terra firme e longe dos outros.
+## Usa `base_height` (barato) e só uma amostra: o relevo do ponto é achatado
+## pelo `FlatStamp` de qualquer jeito, então não precisa medir a inclinação.
 func _spot_ok(gen: LFTerrainGenerator, c: Vector2, placed: Array, min_dist: float) -> bool:
 	for p: Vector2 in placed:
 		if p.distance_to(c) < min_dist:
 			return false
-	var h: float = gen.get_height(c.x, c.y)
-	if h < 1.5:
+	var h: float = gen.base_height(c.x, c.y)
+	if h < 2.0:
 		return false   # perto da água / no mar
 	if gen.water_level_at(c.x, c.y) > h - 0.6:
 		return false
-	var e := 5.0
-	var dh := absf(gen.get_height(c.x + e, c.y) - h)
-	dh = maxf(dh, absf(gen.get_height(c.x - e, c.y) - h))
-	dh = maxf(dh, absf(gen.get_height(c.x, c.y + e) - h))
-	dh = maxf(dh, absf(gen.get_height(c.x, c.y - e) - h))
-	if dh > 1.6:
-		return false   # muito inclinado
 	return true
 
 

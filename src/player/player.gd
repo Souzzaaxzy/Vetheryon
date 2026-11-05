@@ -8,7 +8,7 @@ class_name Player
 
 @export var walk_speed: float = 3.6
 @export var run_speed: float = 7.0
-@export var jump_velocity: float = 4.5
+@export var jump_velocity: float = 3.2
 @export var acceleration: float = 12.0
 @export var rotation_speed: float = 12.0
 @export var camera_rig_path: NodePath
