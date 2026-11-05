@@ -513,20 +513,34 @@ func _bake_structure(path: String) -> Dictionary:
 			first = false
 		else:
 			aabb = aabb.expand(v)
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# IMPORTANTE: `SurfaceTool.commit()` faz UMA superfície com UM material. Como os
+	# prédios usam vários materiais, juntamos os triângulos POR material e criamos
+	# uma superfície para cada — senão o prédio inteiro pega o material errado
+	# (ficava sem cor).
+	var by_mat: Dictionary = {}
 	for surf: Array in surfaces:
 		var mat: Material = surf[0]
-		var verts: PackedVector3Array = surf[1]
+		var key := mat.get_instance_id() if mat else 0
+		if not by_mat.has(key):
+			by_mat[key] = {"mat": mat, "verts": PackedVector3Array()}
+		(by_mat[key]["verts"] as PackedVector3Array).append_array(surf[1])
+	var mesh := ArrayMesh.new()
+	for key in by_mat:
+		var grp: Dictionary = by_mat[key]
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var verts: PackedVector3Array = grp["verts"]
 		for i in range(0, verts.size(), 3):
 			st.set_smooth_group(-1)
 			st.set_normal(Vector3.UP)
-			if mat:
-				st.set_material(mat)
 			st.add_vertex(verts[i])
 			st.add_vertex(verts[i + 1])
 			st.add_vertex(verts[i + 2])
-	var mesh: ArrayMesh = st.commit()
+		var sub := st.commit()
+		for si in sub.get_surface_count():
+			sub.surface_set_material(si, grp["mat"])
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, sub.surface_get_arrays(si))
+			mesh.surface_set_material(mesh.get_surface_count() - 1, grp["mat"])
 	return {"mesh": mesh, "aabb": aabb}
 
 

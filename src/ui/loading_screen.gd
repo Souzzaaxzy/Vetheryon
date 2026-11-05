@@ -23,6 +23,8 @@ var _progress := 0.0
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 11
+	# Começa escondida: só aparece quando o jogo manda (depois do "toque para entrar").
+	visible = false
 	_build()
 
 

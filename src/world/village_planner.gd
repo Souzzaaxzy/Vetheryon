@@ -51,27 +51,49 @@ const BIOME_VILLAGE := {
 }
 
 
-## Achata o terreno num disco: dentro de `r` fica em `level`, e volta ao relevo
-## original ao longo de `blend` metros. Formato que o `LFTerrainGenerator.stamps` espera.
-class FlatStamp extends RefCounted:
-	var center: Vector2
-	var radius: float
-	var level: float
-	var blend: float
+## Achata o terreno em vários discos (vilas, estruturas). Guarda os discos num
+## índice espacial: `get_height` é chamado milhares de vezes por chunk, então
+## testar TODOS os discos a cada chamada era o que travava o carregamento
+## (311 discos -> 50x mais lento). Com o índice só testamos os discos da célula.
+##
+## Formato que o `LFTerrainGenerator.stamps` espera (um objeto com `height(x,z,h)`).
+class StampSet extends RefCounted:
+	const BUCKET := 64.0
+	var _flats: Array = []        # [Vector4(center.x, center.y, radius, level), blend]
+	var _buckets: Dictionary = {}  # Vector2i -> PackedInt32Array (índices)
 
-	func _init(c: Vector2, r: float, lv: float, b: float) -> void:
-		center = c
-		radius = r
-		level = lv
-		blend = b
+	func add(center: Vector2, radius: float, level: float, blend: float) -> void:
+		var idx := _flats.size()
+		_flats.append([center, radius, level, blend])
+		var reach := radius + blend
+		var b0 := Vector2i(floori((center.x - reach) / BUCKET), floori((center.y - reach) / BUCKET))
+		var b1 := Vector2i(floori((center.x + reach) / BUCKET), floori((center.y + reach) / BUCKET))
+		for by in range(b0.y, b1.y + 1):
+			for bx in range(b0.x, b1.x + 1):
+				var k := Vector2i(bx, by)
+				if not _buckets.has(k):
+					_buckets[k] = PackedInt32Array()
+				var arr: PackedInt32Array = _buckets[k]
+				arr.append(idx)
+				_buckets[k] = arr
 
 	func height(x: float, z: float, h: float) -> float:
-		var d := Vector2(x, z).distance_to(center)
-		if d >= radius + blend:
+		var k := Vector2i(floori(x / BUCKET), floori(z / BUCKET))
+		var arr: Variant = _buckets.get(k)
+		if arr == null:
 			return h
-		if d <= radius:
-			return level
-		return lerpf(level, h, smoothstep(0.0, 1.0, (d - radius) / blend))
+		for i: int in (arr as PackedInt32Array):
+			var f: Array = _flats[i]
+			var center: Vector2 = f[0]
+			var radius: float = f[1]
+			var level: float = f[2]
+			var blend: float = f[3]
+			var d := Vector2(x, z).distance_to(center)
+			if d <= radius:
+				h = level
+			elif d < radius + blend:
+				h = lerpf(level, h, smoothstep(0.0, 1.0, (d - radius) / blend))
+		return h
 
 
 ## Um "site" (o gerador mantém props longe de `footprint` + margem).
@@ -86,6 +108,7 @@ var villages: Array = []   # [{center: Vector2, radius: float, level: float, bui
 var scattered: Array = []  # [{scene: String, pos: Vector3, yaw: float}]
 
 var _footprints := {}      # scene path -> radius (m) no plano xz
+var _stamps: StampSet       # índice espacial dos achatamentos do terreno
 var _rng := RandomNumberGenerator.new()
 
 
@@ -96,6 +119,10 @@ func plan(gen: LFTerrainGenerator, seed_value: int) -> void:
 	villages.clear()
 	scattered.clear()
 	_load_footprints()
+	# Um único objeto em `gen.stamps`: o índice espacial faz get_height só
+	# olhar os discos próximos, em vez de todos.
+	_stamps = StampSet.new()
+	gen.stamps.append(_stamps)
 	_plan_villages(gen)
 	_plan_scattered(gen)
 
@@ -151,7 +178,7 @@ func _place_village(gen: LFTerrainGenerator, near: Vector2, placed: Array, radiu
 	if not found:
 		return
 	var level: float = gen.get_height(c.x, c.y)
-	gen.stamps.append(FlatStamp.new(c, radius, level, 14.0))
+	_stamps.add(c, radius, level, 14.0)
 	gen.ground_mask.add_circle(c, radius + 3.0)
 	gen.add_site("village_%d" % placed.size(), SitePlan.new(radius), [Vector3(c.x, level, c.y), 0.0], 14.0)
 	placed.append(c)
@@ -238,7 +265,7 @@ func _scatter_at(gen: LFTerrainGenerator, c: Vector2, placed: Array) -> void:
 	if path == "":
 		return
 	var level: float = gen.get_height(c.x, c.y)
-	gen.stamps.append(FlatStamp.new(c, 14.0, level, 7.0))
+	_stamps.add(c, 14.0, level, 7.0)
 	gen.ground_mask.add_circle(c, 13.0)
 	gen.add_site("scatter_%d" % placed.size(), SitePlan.new(14.0), [Vector3(c.x, level, c.y), 0.0], 8.0)
 	placed.append(c)
@@ -272,7 +299,7 @@ func _biome_at(gen: LFTerrainGenerator, c: Vector2) -> String:
 
 ## Um ponto bom para uma vila/estrutura: em terra firme e longe dos outros.
 ## Usa `base_height` (barato) e só uma amostra: o relevo do ponto é achatado
-## pelo `FlatStamp` de qualquer jeito, então não precisa medir a inclinação.
+## pelo achatamento de qualquer jeito, então não precisa medir a inclinação.
 func _spot_ok(gen: LFTerrainGenerator, c: Vector2, placed: Array, min_dist: float) -> bool:
 	for p: Vector2 in placed:
 		if p.distance_to(c) < min_dist:
