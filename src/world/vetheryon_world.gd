@@ -5,15 +5,19 @@ class_name VetheryonWorld
 ##
 ## Usa o gerador procedural do LowLand Forge (LFTerrainGenerator) direto em memória
 ## — sem escrever arquivos, então funciona no Android. Cada chunk (128 m) é gerado
-## em uma thread e montado no frame seguinte, alguns por frame para não travar.
+## numa thread e montado, um por frame, no thread principal.
 ##
-## Os chunks distantes são liberados; se o jogador voltar, são gerados DE NOVO
-## (mesma seed => exatamente o mesmo terreno).
+## Mantém 5 chunks em cruz (o do jogador + 4 vizinhos). Ao sair da cruz, o chunk é
+## liberado; se o jogador voltar, é gerado DE NOVO (mesma seed => mesmo terreno).
+## Cada chunk traz o terreno (heightmap), as árvores/pedras (MultiMesh) e a colisão
+## de tudo (heightmap + troncos/pedras/troncos caídos).
 
 const CHUNK := LFTileBaker.BLOCK          # 128 m
 const BLOCK_CELLS := LFTileBaker.BLOCK_CELLS
-const KEEP_RADIUS := 2                    # chunks para cada lado mantidos
-const GEN_RADIUS := 1                     # chunks gerados à frente
+## 5 chunks em cruz (o do jogador + 4 vizinhos) = 128 m em cada direção.
+const CHUNK_OFFSETS: Array[Vector2i] = [
+	Vector2i(0, 0), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1),
+]
 const MAX_PER_FRAME := 1                  # montagens por frame (limita o travamento)
 
 @export var world_seed: int = 20261104
@@ -74,12 +78,13 @@ func _update_center(force: bool) -> void:
 	if c == _center and not force:
 		return
 	_center = c
-	for dz in range(-GEN_RADIUS, GEN_RADIUS + 1):
-		for dx in range(-GEN_RADIUS, GEN_RADIUS + 1):
-			_request(c + Vector2i(dx, dz))
-	# Libera os que ficaram longe (o jogador pode voltar: serao gerados de novo).
+	var wanted := {}
+	for off in CHUNK_OFFSETS:
+		wanted[c + off] = true
+		_request(c + off)
+	# Libera os que saíram da cruz (o jogador pode voltar: serao gerados de novo).
 	for coord: Vector2i in _chunks.keys():
-		if maxi(absi(coord.x - c.x), absi(coord.y - c.y)) > KEEP_RADIUS:
+		if not wanted.has(coord):
 			var node: Node3D = _chunks[coord]
 			_chunks.erase(coord)
 			node.queue_free()
@@ -109,6 +114,9 @@ static func _compute_block(g: LFTerrainGenerator, lib: LFPropMeshes, coord: Vect
 	var facets := PackedByteArray()
 	facets.resize(BLOCK_CELLS * 2 * BLOCK_CELLS * 3)
 	var mms := {}
+	var colliders: Array = []
+	var log_colliders: Array = []
+	var cliff_colliders: Array = []
 	var V := LFTerrainGenerator.VERTS
 	var cells := LFTerrainGenerator.CELLS
 	var sub := LFTileBaker.BLOCK_CHUNKS
@@ -131,6 +139,15 @@ static func _compute_block(g: LFTerrainGenerator, lib: LFPropMeshes, coord: Vect
 					hm[(cj * cells + j) * n + ci * cells + i] = heights[j * V + i]
 			var pd: Dictionary = LFChunkData.compute_props(g, lib, c, heights, false, td["levels"])
 			var off := Vector3(ci, 0, cj) * LFTerrainGenerator.CHUNK_SIZE
+			for cc: Array in pd.get("colliders", []):
+				colliders.append([cc[0], (cc[1] as Vector3) + off, cc[2], cc[3]])
+			for lc: Array in pd.get("log_colliders", []):
+				log_colliders.append([(lc[0] as Transform3D).translated(off), lc[1], lc[2]])
+			for hull: PackedVector3Array in pd.get("cliff_colliders", []):
+				var moved := PackedVector3Array()
+				for q in hull:
+					moved.append(q + off)
+				cliff_colliders.append(moved)
 			for mm: Dictionary in pd.get("mms", []):
 				var key: Vector2i = mm["key"]
 				var buf: PackedFloat32Array = mm["buf"]
@@ -140,7 +157,8 @@ static func _compute_block(g: LFTerrainGenerator, lib: LFPropMeshes, coord: Vect
 				if not mms.has(key):
 					mms[key] = PackedFloat32Array()
 				mms[key].append_array(buf)
-	return {"hm": hm, "facets": facets, "mms": mms}
+	return {"hm": hm, "facets": facets, "mms": mms,
+			"colliders": colliders, "log_colliders": log_colliders, "cliff_colliders": cliff_colliders}
 
 
 func _mount_pending() -> void:
@@ -153,10 +171,17 @@ func _mount_pending() -> void:
 		var e: Dictionary = _results.pop_front()
 		_mutex.unlock()
 		_inflight.erase(e["coord"])
-		# O jogador pode ter andado: só monta o que ainda está perto.
-		if maxi(absi(e["coord"].x - _center.x), absi(e["coord"].y - _center.y)) <= KEEP_RADIUS:
+		# O jogador pode ter andado: só monta o que ainda está na cruz.
+		if _wanted(e["coord"]):
 			_mount_chunk(e["coord"], {"block": e["block"]})
 		made += 1
+
+
+func _wanted(coord: Vector2i) -> bool:
+	for off in CHUNK_OFFSETS:
+		if coord == _center + off:
+			return true
+	return false
 
 
 func _mount_chunk(coord: Vector2i, data: Dictionary) -> void:
@@ -183,6 +208,8 @@ func _mount_chunk(coord: Vector2i, data: Dictionary) -> void:
 
 	# Colisão (HeightMapShape3D).
 	var body := StaticBody3D.new()
+	body.name = "TerrainBody"
+	body.add_to_group(LFTileBaker.GROUP_TERRAIN, true)
 	var hs := HeightMapShape3D.new()
 	hs.map_width = BLOCK_CELLS + 1
 	hs.map_depth = BLOCK_CELLS + 1
@@ -223,8 +250,88 @@ func _mount_chunk(coord: Vector2i, data: Dictionary) -> void:
 		mmi.material_override = _prop_material(key.x)
 		root.add_child(mmi)
 
+	# Colisao dos props (troncos, pedras, troncos caidos) no formato do addon:
+	# um ConcavePolygonShape3D por tipo, no espaco do chunk.
+	for prop_body in _prop_bodies(bd.get("colliders", []), bd.get("log_colliders", []), bd.get("cliff_colliders", [])):
+		root.add_child(prop_body)
+
 	add_child(root)
 	_chunks[coord] = root
+
+
+## Mesma geometria de colisao que o LowLand Forge gera no bake: prismas de 6 lados
+## para troncos, esferas para pedras e as cascas (hulls) das pedras de encosta.
+static func _prop_bodies(colliders: Array, log_colliders: Array, cliff_colliders: Array) -> Array[StaticBody3D]:
+	var trees := PackedVector3Array()
+	var rocks := PackedVector3Array()
+	var logs := PackedVector3Array()
+	for c: Array in colliders:
+		var pos: Vector3 = c[1]
+		if c[0]:
+			_sphere_faces(rocks, pos, c[2])
+		else:
+			_prism_faces(trees, Transform3D(Basis(), pos + Vector3(0, c[3] * 0.5, 0)), c[2], c[3], false)
+	for lc: Array in log_colliders:
+		_prism_faces(logs, lc[0], lc[1], lc[2])
+	for hull: PackedVector3Array in cliff_colliders:
+		rocks.append_array(hull)
+	var out: Array[StaticBody3D] = []
+	for kind: Array in [["Tree", trees, LFTileBaker.GROUP_TREE], ["Rock", rocks, LFTileBaker.GROUP_ROCK], ["Log", logs, LFTileBaker.GROUP_LOG]]:
+		var f: PackedVector3Array = kind[1]
+		if f.is_empty():
+			continue
+		var shape := ConcavePolygonShape3D.new()
+		shape.backface_collision = true
+		shape.set_faces(f)
+		var cs := CollisionShape3D.new()
+		cs.shape = shape
+		var body := StaticBody3D.new()
+		body.name = "%sBody" % kind[0]
+		body.add_to_group(kind[2], true)
+		body.add_child(cs)
+		out.append(body)
+	return out
+
+
+const COLLIDE_SIDES := 6
+
+
+static func _prism_faces(f: PackedVector3Array, xf: Transform3D, r: float, height: float, bottom := true) -> void:
+	var h := height * 0.5
+	var top := xf * Vector3(0, h, 0)
+	var bot := xf * Vector3(0, -h, 0)
+	for i in COLLIDE_SIDES:
+		var a0 := TAU * i / COLLIDE_SIDES
+		var a1 := TAU * (i + 1) / COLLIDE_SIDES
+		var p0 := Vector3(cos(a0) * r, 0, sin(a0) * r)
+		var p1 := Vector3(cos(a1) * r, 0, sin(a1) * r)
+		var t0 := xf * (p0 + Vector3(0, h, 0))
+		var t1 := xf * (p1 + Vector3(0, h, 0))
+		var b0 := xf * (p0 - Vector3(0, h, 0))
+		var b1 := xf * (p1 - Vector3(0, h, 0))
+		f.append_array(PackedVector3Array([b0, t0, t1, b0, t1, b1, top, t1, t0]))
+		if bottom:
+			f.append_array(PackedVector3Array([bot, b0, b1]))
+
+
+static func _sphere_faces(f: PackedVector3Array, c: Vector3, r: float) -> void:
+	var rings := 4
+	var segs := 6
+	var pts: Array = []
+	for j in range(rings + 1):
+		var phi := PI * j / rings
+		var row: Array = []
+		for i in segs:
+			var th := TAU * i / segs
+			row.append(c + Vector3(sin(phi) * cos(th), cos(phi), sin(phi) * sin(th)) * r)
+		pts.append(row)
+	for j in rings:
+		for i in segs:
+			var a: Vector3 = pts[j][i]
+			var b: Vector3 = pts[j][(i + 1) % segs]
+			var d: Vector3 = pts[j + 1][i]
+			var e: Vector3 = pts[j + 1][(i + 1) % segs]
+			f.append_array(PackedVector3Array([a, b, d, b, e, d]))
 
 
 func _prop_material(kind: int) -> Material:

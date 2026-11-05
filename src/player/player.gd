@@ -12,6 +12,9 @@ class_name Player
 @export var acceleration: float = 12.0
 @export var rotation_speed: float = 12.0
 @export var camera_rig_path: NodePath
+## Levanta o modelo em relação à cápsula. O terreno é facetado (triângulos de 2 m),
+## então sem isso o pé fica coplanar com a grama e some; alguns cm o deixam visível.
+@export var model_foot_offset: float = 0.04
 
 @onready var model: Node3D = $Model
 
@@ -27,6 +30,8 @@ var _current: String = ""
 
 
 func _ready() -> void:
+	if model:
+		model.position.y = model_foot_offset
 	_camera_rig = get_node_or_null(camera_rig_path)
 	if _camera_rig == null:
 		_camera_rig = get_tree().get_first_node_in_group("camera_rig") as CameraRig
