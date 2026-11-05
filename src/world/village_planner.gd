@@ -11,6 +11,11 @@ extends RefCounted
 ## O mundo lê `villages` e `scattered` e monta cada construção no chunk certo.
 
 const STRUCT_DIR := "res://assets/village_kit/structures/"
+const LANDMARK_DIR := "res://assets/village_kit/pack1/"
+## Marcos maiores (pack 1, Literock Studios — uso permitido em jogos), espalhados raros.
+const LANDMARKS: Array[String] = [
+	"Wolfhold_Barracks_II", "Granite_Legion_Watchtower_III", "Avonmere_House_II",
+]
 
 ## Prédios que podem aparecer numa vila.
 const VILLAGE_STRUCTS: Array[String] = [
@@ -78,13 +83,18 @@ func plan(gen: LFTerrainGenerator, seed_value: int) -> void:
 func _load_footprints() -> void:
 	if not _footprints.is_empty():
 		return
-	var dir := DirAccess.open(STRUCT_DIR)
+	_scan_dir(STRUCT_DIR, ".tscn")
+	_scan_dir(LANDMARK_DIR, ".glb")
+
+
+func _scan_dir(dir_path: String, ext: String) -> void:
+	var dir := DirAccess.open(dir_path)
 	if dir == null:
 		return
 	for f in dir.get_files():
-		if not f.ends_with(".tscn"):
+		if not f.ends_with(ext):
 			continue
-		var path := STRUCT_DIR + f
+		var path := dir_path + f
 		var ps: PackedScene = load(path)
 		if ps == null:
 			continue
@@ -175,8 +185,12 @@ func _plan_scattered(gen: LFTerrainGenerator) -> void:
 				break
 		if near_village:
 			continue
-		var scene: String = SCATTER_STRUCTS[_rng.randi() % SCATTER_STRUCTS.size()]
-		var path := STRUCT_DIR + scene + ".tscn"
+		var path: String
+		if _rng.randf() < 0.22:
+			path = LANDMARK_DIR + LANDMARKS[_rng.randi() % LANDMARKS.size()] + ".glb"
+		else:
+			var scene: String = SCATTER_STRUCTS[_rng.randi() % SCATTER_STRUCTS.size()]
+			path = STRUCT_DIR + scene + ".tscn"
 		var level: float = gen.get_height(c.x, c.y)
 		gen.stamps.append(FlatStamp.new(c, 16.0, level, 8.0))
 		gen.ground_mask.add_circle(c, 15.0)
