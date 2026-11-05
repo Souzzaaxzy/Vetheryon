@@ -431,7 +431,7 @@ func _place_structures(coord: Vector2i, root: Node3D) -> void:
 			if Time.get_ticks_msec() - t0 > _bake_budget_ms:
 				_pending_structs.append({"coord": coord, "entry": entry})
 				continue
-			baked = _bake_structure(path)
+			baked = _bake_structure(path, entry)
 			if (baked as Dictionary).is_empty():
 				continue
 			_baked[path] = baked
@@ -480,7 +480,7 @@ func _flush_pending_structs() -> void:
 			if Time.get_ticks_msec() - t0 > _bake_budget_ms:
 				still.append(e)
 				continue
-			baked = _bake_structure(path)
+			baked = _bake_structure(path, e["entry"])
 			if (baked as Dictionary).is_empty():
 				continue
 			_baked[path] = baked
@@ -490,7 +490,7 @@ func _flush_pending_structs() -> void:
 
 ## Cozinha uma construcao: junta todas as malhas numa so (draw calls) e todas as
 ## faces de colisao num ConcavePolygonShape3D (local, sem o deslocamento do chunk).
-func _bake_structure(path: String) -> Dictionary:
+func _bake_structure(path: String, entry: Dictionary = {}) -> Dictionary:
 	var scene: PackedScene = _struct_scenes.get(path)
 	if scene == null:
 		scene = load(path)
@@ -498,11 +498,14 @@ func _bake_structure(path: String) -> Dictionary:
 			return {}
 		_struct_scenes[path] = scene
 	var inst: Node3D = scene.instantiate()
-	# Escala o predio inteiro para a porta ficar `door_margin` acima do personagem.
-	var door_h := _door_height(inst)
-	var sc := 1.0
-	if door_h > 0.2:
-		sc = (_player_h * door_factor + door_margin) / door_h
+	# Escala: se a entrada trouxer `scale` (modelos do KayKit, em escala de grade
+	# hexagonal), usa direto. Senão, dimensiona pela porta do predio.
+	var sc := float(entry.get("scale", 0.0))
+	if sc <= 0.0:
+		var door_h := _door_height(inst)
+		sc = 1.0
+		if door_h > 0.2:
+			sc = (_player_h * door_factor + door_margin) / door_h
 	var base := Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3.ZERO)
 	var surfaces: Array = []   # [ [material, PackedVector3Array verts] ]
 	var faces := PackedVector3Array()
