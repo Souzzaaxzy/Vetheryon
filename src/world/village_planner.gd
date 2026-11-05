@@ -283,27 +283,3 @@ func _spot_ok(gen: LFTerrainGenerator, c: Vector2, placed: Array, min_dist: floa
 	if gen.water_level_at(c.x, c.y) > h - 0.6:
 		return false
 	return true
-
-
-func _scene_aabb(n: Node) -> AABB:
-	var out := AABB()
-	var first := true
-	for m in _meshes(n):
-		var a: AABB = (m as VisualInstance3D).get_aabb()
-		var gt: Transform3D = (m as Node3D).transform
-		a = gt * a
-		if first:
-			out = a
-			first = false
-		else:
-			out = out.merge(a)
-	return out
-
-
-func _meshes(n: Node) -> Array:
-	var o: Array = []
-	if n is MeshInstance3D:
-		o.append(n)
-	for c in n.get_children():
-		o.append_array(_meshes(c))
-	return o
