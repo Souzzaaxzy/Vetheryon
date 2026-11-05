@@ -24,9 +24,11 @@ const MAX_PER_FRAME := 1                  # montagens por frame (limita o travam
 @export var preset: String = "Rolling Plains"
 @export var density: float = 0.5
 @export var player_path: NodePath
-## Altura do personagem (m) usada para dimensionar os predios: a porta fica
-## `door_margin` acima disso e o predio inteiro e escalado junto.
-@export var door_margin: float = 0.10
+## Dimensiona os predios pela porta: a porta fica `door_factor` x a altura do
+## personagem (bem maior que ele) e o predio inteiro e escalado junto, para nao
+## parecer casinha de boneca.
+@export var door_factor: float = 1.45
+@export var door_margin: float = 0.15
 
 var _gen: LFTerrainGenerator
 var _lib: LFPropMeshes
@@ -500,7 +502,7 @@ func _bake_structure(path: String) -> Dictionary:
 	var door_h := _door_height(inst)
 	var sc := 1.0
 	if door_h > 0.2:
-		sc = (_player_h + door_margin) / door_h
+		sc = (_player_h * door_factor + door_margin) / door_h
 	var base := Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3.ZERO)
 	var surfaces: Array = []   # [ [material, PackedVector3Array verts] ]
 	var faces := PackedVector3Array()
@@ -525,27 +527,28 @@ func _bake_structure(path: String) -> Dictionary:
 	for surf: Array in surfaces:
 		var mat: Material = surf[0]
 		var key := mat.get_instance_id() if mat else 0
-		# PackedVector3Array é tipo por valor: pegar, mexer e devolver.
+		# PackedVector3Array/PackedColorArray são tipo por valor: pegar, mexer e devolver.
 		var acc: PackedVector3Array = by_mat.get(key, {}).get("verts", PackedVector3Array())
+		var accc: PackedColorArray = by_mat.get(key, {}).get("cols", PackedColorArray())
 		acc.append_array(surf[1])
-		by_mat[key] = {"mat": mat, "verts": acc}
+		accc.append_array(surf[2])
+		by_mat[key] = {"mat": mat, "verts": acc, "cols": accc}
 	var mesh := ArrayMesh.new()
 	for key in by_mat:
 		var grp: Dictionary = by_mat[key]
-		var st := SurfaceTool.new()
-		st.begin(Mesh.PRIMITIVE_TRIANGLES)
 		var verts: PackedVector3Array = grp["verts"]
-		for i in range(0, verts.size(), 3):
-			st.set_smooth_group(-1)
-			st.set_normal(Vector3.UP)
-			st.add_vertex(verts[i])
-			st.add_vertex(verts[i + 1])
-			st.add_vertex(verts[i + 2])
-		var sub := st.commit()
-		for si in sub.get_surface_count():
-			sub.surface_set_material(si, grp["mat"])
-			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, sub.surface_get_arrays(si))
-			mesh.surface_set_material(mesh.get_surface_count() - 1, grp["mat"])
+		var cols: PackedColorArray = grp["cols"]
+		var arrays: Array = []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		arrays[Mesh.ARRAY_COLOR] = cols
+		var normals := PackedVector3Array()
+		normals.resize(verts.size())
+		for i in verts.size():
+			normals[i] = Vector3.UP
+		arrays[Mesh.ARRAY_NORMAL] = normals
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		mesh.surface_set_material(mesh.get_surface_count() - 1, grp["mat"])
 	return {"mesh": mesh, "aabb": aabb}
 
 
@@ -613,18 +616,33 @@ func _collect(n: Node, xf: Transform3D, surfaces: Array, faces: PackedVector3Arr
 				var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 				var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
 				var mat: Material = mesh.surface_get_material(si)
+				# As malhas do kit trazem a cor em COLOR_0 (o shader dele usava isso).
+				# Sem copiar as cores, as partes que dependem só da cor saem brancas.
+				var vcols: PackedColorArray = arrays[Mesh.ARRAY_COLOR] if arrays.size() > Mesh.ARRAY_COLOR and arrays[Mesh.ARRAY_COLOR] != null else PackedColorArray()
 				var out := PackedVector3Array()
+				var ocol := PackedColorArray()
 				for k in range(0, idx.size(), 3):
-					var a := cur * verts[idx[k]]
-					var b := cur * verts[idx[k + 1]]
-					var c := cur * verts[idx[k + 2]]
+					var ia := idx[k]
+					var ib := idx[k + 1]
+					var ic := idx[k + 2]
+					var a := cur * verts[ia]
+					var b := cur * verts[ib]
+					var c := cur * verts[ic]
 					out.append(a)
 					out.append(b)
 					out.append(c)
+					if vcols.is_empty():
+						ocol.append(Color.WHITE)
+						ocol.append(Color.WHITE)
+						ocol.append(Color.WHITE)
+					else:
+						ocol.append(vcols[ia])
+						ocol.append(vcols[ib])
+						ocol.append(vcols[ic])
 					faces.append(a)
 					faces.append(b)
 					faces.append(c)
-				surfaces.append([mat, out])
+				surfaces.append([mat, out, ocol])
 	for c in n.get_children():
 		_collect(c, cur, surfaces, faces)
 
@@ -641,6 +659,9 @@ func _structs_in(coord: Vector2i) -> Array:
 	for sc: Dictionary in _planner.scattered:
 		if _chunk_of(sc["pos"]) == coord:
 			out.append(sc)
+	for ca: Dictionary in _planner.castles:
+		if _chunk_of(ca["pos"]) == coord:
+			out.append(ca)
 	return out
 
 

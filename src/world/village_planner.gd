@@ -41,6 +41,11 @@ const BIOME_STRUCTS := {
 	"Frozen Highlands": ["Mine", "GuardTower", "Camp", "ForesterHut"],
 	"Drowned Marsh": ["FisherHut", "Camp", "Shack_Planks", "Lavoir"],
 }
+## Castelos (CC0, Grab3D): peças modulares com interior e exterior. Formam um
+## castelo grande (muralha + torres + portão + fortaleza) num lugar aberto.
+const CASTLE_DIR := "res://assets/castle/"
+const CASTLE_MAIN := ["castle", "neuschwanstein-castle"]
+
 ## Construções de vila por bioma (senão usa as genéricas).
 const BIOME_VILLAGE := {
 	"Palm Coast": ["FisherHut", "Shack_Planks", "Lavoir", "Inn", "Stable", "Storehouse"],
@@ -106,6 +111,7 @@ class SitePlan extends RefCounted:
 
 var villages: Array = []   # [{center: Vector2, radius: float, level: float, buildings: Array}]
 var scattered: Array = []  # [{scene: String, pos: Vector3, yaw: float}]
+var castles: Array = []    # [{scene: String, pos: Vector3, yaw: float, scale: float}]
 
 var _footprints := {}      # scene path -> radius (m) no plano xz
 var _stamps: StampSet       # índice espacial dos achatamentos do terreno
@@ -125,6 +131,7 @@ func plan(gen: LFTerrainGenerator, seed_value: int) -> void:
 	gen.stamps.append(_stamps)
 	_plan_villages(gen)
 	_plan_scattered(gen)
+	_plan_castles(gen)
 
 
 ## Raio aproximado (m) por tipo de predio. Fixo de propósito: medir instanciando
@@ -142,6 +149,12 @@ func _load_footprints() -> void:
 		_footprints[STRUCT_DIR + n + ".tscn"] = 11.0
 	for n in FOOTPRINT_SMALL:
 		_footprints[STRUCT_DIR + n + ".tscn"] = 5.0
+	for n in ["castle", "neuschwanstein-castle"]:
+		_footprints[CASTLE_DIR + n + ".glb"] = 18.0
+	for n in ["keep", "gatehouse"]:
+		_footprints[CASTLE_DIR + n + ".glb"] = 9.0
+	for n in ["castle-tower", "castle-wall", "portcullis", "drawbridge"]:
+		_footprints[CASTLE_DIR + n + ".glb"] = 5.0
 
 
 func _plan_villages(gen: LFTerrainGenerator) -> void:
@@ -151,15 +164,15 @@ func _plan_villages(gen: LFTerrainGenerator) -> void:
 	# Grade jitterada: garante vilas espalhadas por todo o mapa (não só no centro).
 	# Primeiro garante uma vila perto do spawn (o jogador acha logo de cara).
 	_place_village(gen, spawn + Vector2(150.0, 40.0), placed, 40.0)
-	var spacing := 300.0
-	var n := 7
+	var spacing := 220.0
+	var n := 8
 	for gz in range(-n, n + 1):
 		for gx in range(-n, n + 1):
 			var c := center + Vector2(gx, gz) * spacing
 			c += Vector2(_rng.randf_range(-80.0, 80.0), _rng.randf_range(-80.0, 80.0))
 			if c.distance_to(spawn) < 120.0:
 				continue   # deixa o spawn livre
-			if _rng.randf() > 0.5:
+			if _rng.randf() > 0.78:
 				continue   # nem toda célula tem vila
 			if not _spot_ok(gen, c, placed, spacing * 0.8):
 				continue
@@ -199,7 +212,7 @@ func _layout_buildings(gen: LFTerrainGenerator, center: Vector2, level: float, r
 	var mid: String = CENTER_STRUCTS[_rng.randi() % CENTER_STRUCTS.size()]
 	_try_place(STRUCT_DIR + mid + ".tscn", center, _rng.randf() * TAU, taken, out, level)
 	# 6 a 10 casas em volta.
-	var count := _rng.randi_range(6, 10)
+	var count := _rng.randi_range(9, 16)
 	for _i in count:
 		var scene: String
 		if not village_set.is_empty() and _rng.randf() < 0.6:
@@ -239,15 +252,15 @@ func _plan_scattered(gen: LFTerrainGenerator) -> void:
 		var a := _rng.randf() * TAU
 		var r := _rng.randf_range(60.0, 170.0)
 		_scatter_at(gen, spawn + Vector2(cos(a), sin(a)) * r, placed)
-	var spacing := 150.0
-	var n := 13
+	var spacing := 110.0
+	var n := 15
 	for gz in range(-n, n + 1):
 		for gx in range(-n, n + 1):
 			var c := center + Vector2(gx, gz) * spacing
 			c += Vector2(_rng.randf_range(-45.0, 45.0), _rng.randf_range(-45.0, 45.0))
 			if c.distance_to(spawn) < 45.0:
 				continue
-			if _rng.randf() > 0.42:
+			if _rng.randf() > 0.62:
 				continue
 			if not _spot_ok(gen, c, placed, spacing * 0.75):
 				continue
@@ -270,6 +283,60 @@ func _scatter_at(gen: LFTerrainGenerator, c: Vector2, placed: Array) -> void:
 	gen.add_site("scatter_%d" % placed.size(), SitePlan.new(14.0), [Vector3(c.x, level, c.y), 0.0], 8.0)
 	placed.append(c)
 	scattered.append({"scene": path, "pos": Vector3(c.x, level, c.y), "yaw": _rng.randf() * TAU})
+
+
+## Espalha castelos: um "principal" (muralha + torres) e torres/muralhas soltas.
+func _plan_castles(gen: LFTerrainGenerator) -> void:
+	var center: Vector2 = gen.region_center
+	var spawn: Vector2 = gen.spawn_xz
+	var placed: Array = []
+	# Um castelo principal garantido a ~600 m do spawn (dá para achar caminhando).
+	_place_castle(gen, spawn + Vector2(430.0, 320.0), placed, CASTLE_MAIN, 22.0)
+	# Outros castelos espalhados (raros).
+	var spacing := 900.0
+	var n := 4
+	for gz in range(-n, n + 1):
+		for gx in range(-n, n + 1):
+			var c := center + Vector2(gx, gz) * spacing
+			c += Vector2(_rng.randf_range(-150.0, 150.0), _rng.randf_range(-150.0, 150.0))
+			if c.distance_to(spawn) < 320.0:
+				continue
+			if _rng.randf() > 0.6:
+				continue
+			if not _spot_ok(gen, c, placed, spacing * 0.7):
+				continue
+			_place_castle(gen, c, placed, CASTLE_MAIN, 22.0)
+	# Torres/muralhas soltas, mais comuns, para dar clima de reino.
+	var spacing2 := 420.0
+	for gz in range(-6, 7):
+		for gx in range(-6, 7):
+			var c := center + Vector2(gx, gz) * spacing2
+			c += Vector2(_rng.randf_range(-90.0, 90.0), _rng.randf_range(-90.0, 90.0))
+			if c.distance_to(spawn) < 200.0:
+				continue
+			if _rng.randf() > 0.30:
+				continue
+			var piece: String = ["castle-tower", "castle-wall", "gatehouse", "keep", "portcullis", "drawbridge"][_rng.randi() % 6]
+			_place_castle(gen, c, placed, [piece], 7.0)
+
+
+func _place_castle(gen: LFTerrainGenerator, near: Vector2, placed: Array, pool: Array, radius: float) -> void:
+	var c := near
+	var found := false
+	for _try in 12:
+		if _spot_ok(gen, c, placed, radius * 2.2):
+			found = true
+			break
+		c = near + Vector2(_rng.randf_range(-90.0, 90.0), _rng.randf_range(-90.0, 90.0))
+	if not found:
+		return
+	var piece: String = pool[_rng.randi() % pool.size()]
+	var level: float = gen.get_height(c.x, c.y)
+	_stamps.add(c, radius, level, radius * 0.5)
+	gen.ground_mask.add_circle(c, radius)
+	gen.add_site("castle_%d" % placed.size(), SitePlan.new(radius), [Vector3(c.x, level, c.y), 0.0], 10.0)
+	placed.append(c)
+	castles.append({"scene": CASTLE_DIR + piece + ".glb", "pos": Vector3(c.x, level, c.y), "yaw": _rng.randf() * TAU, "scale": 1.0})
 
 
 ## Escolhe a estrutura para um ponto: as do bioma, senão as comuns; às vezes um marco.
