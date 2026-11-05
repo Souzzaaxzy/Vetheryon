@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3 uid="uid://bmainvethy0n"]
+[gd_scene load_steps=17 format=3 uid="uid://bmainvethy0n"]
 
 [ext_resource type="Script" path="res://src/world/vetheryon_world.gd" id="1_world"]
 [ext_resource type="PackedScene" path="res://src/player/player.tscn" id="2_player"]
@@ -10,6 +10,9 @@
 [ext_resource type="Script" path="res://src/ui/loading_screen.gd" id="9_loading"]
 [ext_resource type="Script" path="res://src/ui/pause_menu.gd" id="10_pause"]
 [ext_resource type="Script" path="res://src/world/day_night.gd" id="11_daynight"]
+[ext_resource type="Script" path="res://src/core/inventory.gd" id="12_inv"]
+[ext_resource type="Script" path="res://src/ui/hotbar.gd" id="13_hotbar"]
+[ext_resource type="Script" path="res://src/ui/inventory_screen.gd" id="14_invscreen"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.25, 0.42, 0.7, 1)
@@ -83,3 +86,12 @@ script = ExtResource("9_loading")
 [node name="PauseMenu" type="CanvasLayer" parent="."]
 layer = 9
 script = ExtResource("10_pause")
+
+[node name="Inventory" type="Node" parent="."]
+script = ExtResource("12_inv")
+
+[node name="Hotbar" type="CanvasLayer" parent="."]
+script = ExtResource("13_hotbar")
+
+[node name="InventoryScreen" type="CanvasLayer" parent="."]
+script = ExtResource("14_invscreen")

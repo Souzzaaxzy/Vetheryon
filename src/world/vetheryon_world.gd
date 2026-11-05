@@ -125,6 +125,10 @@ func _make_params() -> LFMapParams:
 			p.biomes.append(b)
 	for b in p.biomes:
 		b.enabled = b.name in ALL_BIOMES
+	# BIOMAS GRANDES: baixo o `climate_freq` (o ruído de clima vira regiões amplas,
+	# um bioma por região, não manchas pequenas). Transições suaves com biome_blend.
+	p.climate_freq = 0.00055
+	p.biome_blend = 3.5
 	var d := density
 	p.prop_density = d
 	p.tree_density = d
@@ -521,9 +525,10 @@ func _bake_structure(path: String) -> Dictionary:
 	for surf: Array in surfaces:
 		var mat: Material = surf[0]
 		var key := mat.get_instance_id() if mat else 0
-		if not by_mat.has(key):
-			by_mat[key] = {"mat": mat, "verts": PackedVector3Array()}
-		(by_mat[key]["verts"] as PackedVector3Array).append_array(surf[1])
+		# PackedVector3Array é tipo por valor: pegar, mexer e devolver.
+		var acc: PackedVector3Array = by_mat.get(key, {}).get("verts", PackedVector3Array())
+		acc.append_array(surf[1])
+		by_mat[key] = {"mat": mat, "verts": acc}
 	var mesh := ArrayMesh.new()
 	for key in by_mat:
 		var grp: Dictionary = by_mat[key]

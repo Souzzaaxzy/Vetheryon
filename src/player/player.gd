@@ -31,6 +31,8 @@ var _camera_rig: CameraRig
 var _anim: AnimationPlayer
 var _current: String = ""
 var _world: Node
+var _attack_t := 0.0
+var _hand: Node3D
 
 
 func _ready() -> void:
@@ -40,6 +42,7 @@ func _ready() -> void:
 	if _camera_rig == null:
 		_camera_rig = get_tree().get_first_node_in_group("camera_rig") as CameraRig
 	_world = get_tree().get_first_node_in_group("world")
+	_hand = get_node_or_null("Hand")
 	_anim = _find_animation_player(model)
 	if _anim:
 		_play("Idle")
@@ -88,6 +91,38 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_check_void()
 	_update_animation()
+	if _attack_t > 0.0:
+		_attack_t = maxf(0.0, _attack_t - delta)
+
+
+## Ataca com o item na mão (a espada balança; só é "ataque" se for arma).
+func attack() -> void:
+	if _attack_t > 0.0:
+		return
+	_attack_t = 0.45
+	var item = null
+	if _hand and _hand.inventory:
+		item = _hand.inventory.held_item()
+	var id: String = item.get("id", "") if item is Dictionary else ""
+	if id == "sword":
+		_swing()
+
+
+func _swing() -> void:
+	if _hand == null or _hand._sword == null:
+		return
+	var sw: Node3D = _hand._sword
+	var tw := create_tween()
+	tw.tween_property(sw, "rotation:x", deg_to_rad(-110.0), 0.12)
+	tw.tween_property(sw, "rotation:x", 0.0, 0.22)
+
+
+## É a arma na mão? (para o HUD saber)
+func held_is_sword() -> bool:
+	if _hand == null or _hand.inventory == null:
+		return false
+	var item = _hand.inventory.held_item()
+	return item is Dictionary and item.get("id", "") == "sword"
 
 
 ## Se o jogador caiu abaixo do terreno (chunk não carregou, buraco no mundo),

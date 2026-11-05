@@ -48,6 +48,7 @@ func _build() -> void:
 	_visual.draw.connect(_draw_joystick)
 	_canvas.add_child(_visual)
 
+	_add_button("ATACAR", _on_attack)
 	_add_button("PULAR", _on_jump)
 	_add_button("CORRER", _on_run)
 	_add_button("CÂMERA", _on_camera)
@@ -76,9 +77,10 @@ func _layout() -> void:
 	var gap := 14.0
 	var right_x := size.x - bw - 26.0
 	var bottom_y := size.y - 26.0
-	_buttons[0].position = Vector2(right_x, bottom_y - bh)                 # PULAR
-	_buttons[1].position = Vector2(right_x, bottom_y - bh * 2 - gap)       # CORRER
-	_buttons[2].position = Vector2(right_x, bottom_y - bh * 3 - gap * 2)   # CÂMERA
+	_buttons[0].position = Vector2(right_x, bottom_y - bh)                 # ATACAR
+	_buttons[1].position = Vector2(right_x, bottom_y - bh * 2 - gap)       # PULAR
+	_buttons[2].position = Vector2(right_x, bottom_y - bh * 3 - gap * 2)   # CORRER
+	_buttons[3].position = Vector2(right_x, bottom_y - bh * 4 - gap * 3)   # CÂMERA
 	if _visual:
 		_visual.queue_redraw()
 
@@ -158,6 +160,11 @@ func _on_jump() -> void:
 func _on_run() -> void:
 	if _player:
 		_player.wants_run = not _player.wants_run
+
+
+func _on_attack() -> void:
+	if _player:
+		_player.attack()
 
 
 func _on_camera() -> void:
