@@ -7,11 +7,16 @@ Sandbox medieval de fantasia 3D — Android, Godot 4.7 (renderizador Mobile).
 
 ## O que já funciona
 
-- Terreno procedural (FastNoiseLite) com relevo, cores por altitude e colisão por *heightmap*.
+- Mundo procedural **infinito por chunks** (128 m): gerado em runtime com o
+  gerador do LowLand Forge, numa thread por chunk. Os chunks distantes são
+  liberados e, ao voltar, são gerados de novo (mesma seed = mesmo terreno).
+- Terreno com relevo, cores por bioma, rios/lagos e colisão por *heightmap*.
+- Árvores e rochas via *MultiMesh* (milhares de instâncias sem travar).
 - Personagem jogável (CharacterBody3D): andar, correr, pular, gravidade.
 - Câmera 1ª/3ª pessoa com alternância (`F`), movimento relativo à câmera.
 - Controles touchscreen (joystick virtual + botões) para Android.
-- Céu procedural, sol com sombras e neblina.
+- Céu procedural, sol e neblina.
+- Tela de entrada com a arte de abertura e o botão "TOQUE PARA ENTRAR".
 - Export de APK Android assinado (debug).
 
 ## Estrutura
@@ -19,8 +24,9 @@ Sandbox medieval de fantasia 3D — Android, Godot 4.7 (renderizador Mobile).
 ```
 src/
 ├── player/     player.gd, camera_rig.gd, player.tscn
-├── world/      terrain.gd, main.tscn
-└── ui/         touch_controls.gd, hud.gd
+├── world/      vetheryon_world.gd, main.tscn
+└── ui/         touch_controls.gd, hud.gd, start_screen.gd
+addons/lowland_forge/   gerador procedural + shaders (MIT)
 ```
 
 ## Rodar localmente

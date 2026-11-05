@@ -1,7 +1,0 @@
-[gd_scene format=3]
-
-[ext_resource type="ArrayMesh" path="res://maps/world/shared/flower_0.res" id="1_xk2qu"]
-
-[node name="Flower0" type="MeshInstance3D" unique_id=784153193]
-cast_shadow = 0
-mesh = ExtResource("1_xk2qu")

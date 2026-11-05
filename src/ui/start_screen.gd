@@ -13,7 +13,7 @@ signal entered
 
 var _root: Control
 var _button: Label
-var _panel: Panel
+var _panel: PanelContainer
 var _t := 0.0
 var _entered := false
 
@@ -55,8 +55,9 @@ func _build() -> void:
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(holder)
 
-	# Painel do botão (arredondado, semi-transparente).
-	_panel = Panel.new()
+	# Painel do botão (arredondado, semi-transparente). PanelContainer abraça o
+	# texto, então o CenterContainer consegue centralizá-lo de verdade.
+	_panel = PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.08, 0.06, 0.05, 0.55)
 	sb.border_color = Color(1.0, 0.86, 0.5, 0.9)

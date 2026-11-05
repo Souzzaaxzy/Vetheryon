@@ -1,7 +1,0 @@
-[gd_scene format=3]
-
-[ext_resource type="ArrayMesh" path="res://maps/world/shared/grass_0.res" id="1_3vlhp"]
-
-[node name="Grass0" type="MeshInstance3D" unique_id=865515417]
-cast_shadow = 0
-mesh = ExtResource("1_3vlhp")

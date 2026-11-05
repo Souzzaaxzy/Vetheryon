@@ -1,7 +1,0 @@
-[gd_scene format=3]
-
-[ext_resource type="ArrayMesh" path="res://maps/world/shared/dry_bush_0.res" id="1_c0hov"]
-
-[node name="Dry Bush0" type="MeshInstance3D" unique_id=781373017]
-cast_shadow = 0
-mesh = ExtResource("1_c0hov")

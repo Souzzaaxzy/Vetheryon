@@ -1,6 +1,6 @@
 [gd_scene load_steps=10 format=3 uid="uid://bmainvethy0n"]
 
-[ext_resource type="Script" path="res://src/world/world.gd" id="1_world"]
+[ext_resource type="Script" path="res://src/world/vetheryon_world.gd" id="1_world"]
 [ext_resource type="PackedScene" path="res://src/player/player.tscn" id="2_player"]
 [ext_resource type="Script" path="res://src/ui/touch_controls.gd" id="3_touch"]
 [ext_resource type="Script" path="res://src/ui/hud.gd" id="4_hud"]
