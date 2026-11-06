@@ -70,7 +70,18 @@ toggle_camera={
 
 renderer/rendering_method="mobile"
 textures/vram_compression/import_etc2_astc=true
+textures/default_filters/anisotropic_filtering_level=3
+textures/default_filters/texture_mipmap_bias=-0.5
 environment/defaults/default_clear_color=Color(0.42, 0.55, 0.72, 1)
+
+[importer_defaults]
+
+texture={
+"compress/hdr_compression": 1,
+"detect_3d/compress_to": 1,
+"mipmaps/generate": true,
+"process/fix_alpha_border": true
+}
 
 [shader_globals]
 

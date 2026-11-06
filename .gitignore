@@ -14,3 +14,6 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# Agent working state (memória do agente, não é parte do jogo)
+.openhands/

@@ -137,8 +137,9 @@ func _plan_villages(gen: LFTerrainGenerator) -> void:
 	var center: Vector2 = gen.region_center
 	var spawn: Vector2 = gen.spawn_xz
 	var placed: Array = []
-	# Uma vila garantida logo perto do spawn.
-	_place_village(gen, spawn + Vector2(120.0, 60.0), placed, 46.0)
+	# Uma vila garantida logo perto do spawn — perto o bastante para o jogador ver
+	# os prédios ao entrar (dentro do raio de visão das estruturas, 120 m).
+	_place_village(gen, spawn + Vector2(78.0, 42.0), placed, 46.0)
 	var spacing := 260.0
 	var n := 7
 	for gz in range(-n, n + 1):
@@ -278,13 +279,13 @@ func _build_castle(gen: LFTerrainGenerator, near: Vector2, placed: Array, radius
 				piece = CASTLE_GATE   # portão no meio do lado sul
 			parts.append({"scene": KK + "buildings/neutral/" + piece + ".gltf",
 				"pos": Vector3(p.x, level, p.y), "yaw": yaw, "scale": KK_SCALE * 1.5})
-	# Torres nos 4 cantos.
+	# Torres nos 4 cantos (as peças existem só nas versões coloridas).
 	for cx in [-wall, wall]:
 		for cz in [-wall, wall]:
 			var p := c + Vector2(cx, cz)
-			parts.append({"scene": KK + "buildings/neutral/" + CASTLE_TOWER_BASE + ".gltf",
+			parts.append({"scene": _building_path(CASTLE_TOWER_BASE, color),
 				"pos": Vector3(p.x, level, p.y), "yaw": 0.0, "scale": KK_SCALE * 1.5})
-			parts.append({"scene": KK + "buildings/neutral/" + CASTLE_TOWER + ".gltf",
+			parts.append({"scene": _building_path(CASTLE_TOWER, color),
 				"pos": Vector3(p.x, level + 3.4, p.y), "yaw": 0.0, "scale": KK_SCALE * 1.5})
 	# Fortaleza (castelo) no centro.
 	parts.append({"scene": _building_path(CASTLE_KEEP, color),

@@ -109,12 +109,8 @@ func attack() -> void:
 
 
 func _swing() -> void:
-	if _hand == null or _hand._sword == null:
-		return
-	var sw: Node3D = _hand._sword
-	var tw := create_tween()
-	tw.tween_property(sw, "rotation:x", deg_to_rad(-110.0), 0.12)
-	tw.tween_property(sw, "rotation:x", 0.0, 0.22)
+	if _hand and _hand.has_method("swing"):
+		_hand.swing()
 
 
 ## É a arma na mão? (para o HUD saber)

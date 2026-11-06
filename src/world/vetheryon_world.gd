@@ -14,11 +14,15 @@ class_name VetheryonWorld
 
 const CHUNK := LFTileBaker.BLOCK          # 128 m
 const BLOCK_CELLS := LFTileBaker.BLOCK_CELLS
-## 5 chunks em cruz (o do jogador + 4 vizinhos) = 128 m em cada direção.
+## 3x3 chunks em volta do jogador: garante terreno em TODAS as direções (não só
+## em cruz), então nenhuma estrutura fica pendurada sobre o vazio. O raio de visão
+## das estruturas (120 m) cabe dentro dessa área.
 const CHUNK_OFFSETS: Array[Vector2i] = [
-	Vector2i(0, 0), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1),
+	Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1),
+	Vector2i(-1, 0), Vector2i(0, 0), Vector2i(1, 0),
+	Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1),
 ]
-const MAX_PER_FRAME := 1                  # montagens por frame (limita o travamento)
+const MAX_PER_FRAME := 2                  # montagens por frame (limita o travamento)
 
 @export var world_seed: int = 20261104
 @export var preset: String = "Rolling Plains"
@@ -33,6 +37,7 @@ const MAX_PER_FRAME := 1                  # montagens por frame (limita o travam
 var _gen: LFTerrainGenerator
 var _lib: LFPropMeshes
 var _terrain_shader: Shader
+var _noise_tex: ImageTexture
 var _player: Node3D
 
 var _chunks: Dictionary = {}       # Vector2i -> Node3D (montado)
@@ -44,11 +49,8 @@ var _mutex := Mutex.new()
 var _results: Array = []           # [ {coord, block} ] prontos para montar
 
 var _planner: VillagePlanner
-var _struct_scenes: Dictionary = {}   # path -> PackedScene
-var _baked: Dictionary = {}          # path -> {mesh, aabb} (construcao cozida)
+var _structures: StructureManager
 var _player_h := 1.9                 # altura do personagem (medida no _ready)
-var _pending_structs: Array = []     # [{coord, entry}] esperando cozinhar (fora do orçamento do frame)
-var _bake_budget_ms := 40.0          # tempo maximo por frame cozinhando predios
 var _spawn_ready := false            # os chunks do spawn ja montaram (tela de carregamento)
 
 
@@ -72,7 +74,8 @@ func _ready() -> void:
 	_lib = LFPropMeshes.new()
 	_lib.rock_color = _gen.params.rock_color
 	_lib.build(world_seed)
-	_terrain_shader = load("res://addons/lowland_forge/shaders/terrain_baked.gdshader")
+	_terrain_shader = load("res://src/world/terrain.gdshader")
+	_noise_tex = _make_noise_texture()
 	# Leva o jogador ao ponto de spawn do mundo ANTES de pedir os chunks: senão o
 	# mundo pediria (e calcularia) os 5 chunks da origem (0,0), longe de tudo, e
 	# ainda atrasaria os chunks do spawn.
@@ -80,6 +83,12 @@ func _ready() -> void:
 		var sp := _gen.spawn_xz
 		_player.global_position = Vector3(sp.x, _gen.get_height(sp.x, sp.y) + 2.0, sp.y)
 		_player_h = _measure_height(_player.get_node_or_null("Model"))
+	# As construções têm streaming próprio (independente dos chunks): nascem por
+	# distância ao jogador, então uma vila inteira aparece mesmo cruzando chunks.
+	_structures = StructureManager.new()
+	_structures.name = "Structures"
+	add_child(_structures)
+	_structures.setup(_planner, _player, _player_h, door_factor, door_margin)
 	_spawn_ready = false
 	_update_center(true)
 	await get_tree().process_frame
@@ -92,8 +101,6 @@ func is_ready() -> bool:
 		for off in CHUNK_OFFSETS:
 			if not _chunks.has(_center + off):
 				return false
-		if not _pending_structs.is_empty():
-			return false
 		_spawn_ready = true
 	return _spawn_ready
 
@@ -106,11 +113,7 @@ func loading_progress() -> float:
 		want += 1
 		if _chunks.has(_center + off):
 			got += 1
-	var chunk_frac := float(got) / float(maxi(want, 1))
-	# Os prédios pendentes são a parte final; descontam um pouco do progresso.
-	if not _pending_structs.is_empty():
-		chunk_frac *= 0.85
-	return clampf(chunk_frac, 0.0, 1.0)
+	return clampf(float(got) / float(maxi(want, 1)), 0.0, 1.0)
 
 
 ## Params do mundo: presets de relevo/água + TODOS os biomas ligados. O ruído de
@@ -149,7 +152,6 @@ func _physics_process(_delta: float) -> void:
 	if _player:
 		_update_center(false)
 	_mount_pending()
-	_flush_pending_structs()
 
 
 func _update_center(force: bool) -> void:
@@ -283,6 +285,7 @@ func _mount_chunk(coord: Vector2i, data: Dictionary) -> void:
 	mat.set_shader_parameter("facets", ImageTexture.create_from_image(
 			Image.create_from_data(BLOCK_CELLS * 2, BLOCK_CELLS, false, Image.FORMAT_RGB8, facets)))
 	mat.set_shader_parameter("cell", LFTerrainGenerator.STEP)
+	mat.set_shader_parameter("noise_tex", _noise_tex)
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
@@ -327,7 +330,7 @@ func _mount_chunk(coord: Vector2i, data: Dictionary) -> void:
 			multi.set_instance_transform(i, t)
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = multi
-		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		mmi.material_override = _prop_material(key.x)
 		root.add_child(mmi)
 
@@ -335,8 +338,6 @@ func _mount_chunk(coord: Vector2i, data: Dictionary) -> void:
 	# um ConcavePolygonShape3D por tipo, no espaco do chunk.
 	for prop_body in _prop_bodies(bd.get("colliders", []), bd.get("log_colliders", []), bd.get("cliff_colliders", [])):
 		root.add_child(prop_body)
-
-	_place_structures(coord, root)
 
 	add_child(root)
 	_chunks[coord] = root
@@ -417,162 +418,6 @@ static func _sphere_faces(f: PackedVector3Array, c: Vector3, r: float) -> void:
 			f.append_array(PackedVector3Array([a, b, d, b, e, d]))
 
 
-## Coloca as construcoes cujo centro cai neste chunk. Cada TIPO de construcao e
-## cozido UMA vez em: uma malha unica (1 draw call, em vez de ~100 MeshInstance3D)
-## e uma casca de colisao unica. Depois so instanciamos a versao pronta.
-func _place_structures(coord: Vector2i, root: Node3D) -> void:
-	var t0 := Time.get_ticks_msec()
-	for entry in _structs_in(coord):
-		var path: String = entry["scene"]
-		var baked = _baked.get(path)
-		if not (baked is Dictionary):
-			# Cozinhar um predio custa ~100 ms; se passar do orçamento do frame,
-			# adia para nao travar. O resto sai nos frames seguintes.
-			if Time.get_ticks_msec() - t0 > _bake_budget_ms:
-				_pending_structs.append({"coord": coord, "entry": entry})
-				continue
-			baked = _bake_structure(path, entry)
-			if (baked as Dictionary).is_empty():
-				continue
-			_baked[path] = baked
-		_instantiate_structure(baked, entry, root)
-
-
-func _instantiate_structure(baked: Dictionary, entry: Dictionary, root: Node3D) -> void:
-	var path: String = entry["scene"]
-	var pos: Vector3 = entry["pos"]
-	var yaw: float = entry["yaw"]
-	var mi := MeshInstance3D.new()
-	mi.mesh = baked["mesh"]
-	mi.name = "Struct_%s" % path.get_file().get_basename()
-	mi.position = pos - root.position
-	mi.rotation.y = yaw
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(mi)
-	var aabb: AABB = baked["aabb"]
-	var body := StaticBody3D.new()
-	body.name = "StructBody_%s" % path.get_file().get_basename()
-	body.add_to_group(LFTileBaker.GROUP_TREE, true)
-	var shape := BoxShape3D.new()
-	shape.size = aabb.size
-	var cs := CollisionShape3D.new()
-	cs.shape = shape
-	cs.position = aabb.position + aabb.size * 0.5
-	body.add_child(cs)
-	body.position = mi.position
-	body.rotation.y = yaw
-	root.add_child(body)
-
-
-## Monta as estruturas adiadas, respeitando o orçamento de tempo por frame.
-func _flush_pending_structs() -> void:
-	if _pending_structs.is_empty():
-		return
-	var t0 := Time.get_ticks_msec()
-	var still: Array = []
-	for e: Dictionary in _pending_structs:
-		var root: Node3D = _chunks.get(e["coord"])
-		if root == null:
-			continue   # chunk ja foi liberado
-		var path: String = e["entry"]["scene"]
-		var baked = _baked.get(path)
-		if not (baked is Dictionary):
-			if Time.get_ticks_msec() - t0 > _bake_budget_ms:
-				still.append(e)
-				continue
-			baked = _bake_structure(path, e["entry"])
-			if (baked as Dictionary).is_empty():
-				continue
-			_baked[path] = baked
-		_instantiate_structure(baked, e["entry"], root)
-	_pending_structs = still
-
-
-## Cozinha uma construcao: junta todas as malhas numa so (draw calls) e todas as
-## faces de colisao num ConcavePolygonShape3D (local, sem o deslocamento do chunk).
-func _bake_structure(path: String, entry: Dictionary = {}) -> Dictionary:
-	var scene: PackedScene = _struct_scenes.get(path)
-	if scene == null:
-		scene = load(path)
-		if scene == null:
-			return {}
-		_struct_scenes[path] = scene
-	var inst: Node3D = scene.instantiate()
-	# Escala: se a entrada trouxer `scale` (modelos do KayKit, em escala de grade
-	# hexagonal), usa direto. Senão, dimensiona pela porta do predio.
-	var sc := float(entry.get("scale", 0.0))
-	if sc <= 0.0:
-		var door_h := _door_height(inst)
-		sc = 1.0
-		if door_h > 0.2:
-			sc = (_player_h * door_factor + door_margin) / door_h
-	var base := Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3.ZERO)
-	var surfaces: Array = []   # [ [material, PackedVector3Array verts] ]
-	var faces := PackedVector3Array()
-	_collect(inst, base, surfaces, faces)
-	inst.free()
-	# Caixa de colisao: muito mais barata que um trimesh (que aqui passava de
-	# 100 mil triangulos por predio). O predio nao tem interior, entao uma caixa
-	# bloqueia igual.
-	var aabb := AABB()
-	var first := true
-	for v in faces:
-		if first:
-			aabb = AABB(v, Vector3.ZERO)
-			first = false
-		else:
-			aabb = aabb.expand(v)
-	# IMPORTANTE: `SurfaceTool.commit()` faz UMA superfície com UM material. Como os
-	# prédios usam vários materiais, juntamos os triângulos POR material e criamos
-	# uma superfície para cada — senão o prédio inteiro pega o material errado
-	# (ficava sem cor).
-	var by_mat: Dictionary = {}
-	for surf: Array in surfaces:
-		var mat: Material = surf[0]
-		var key := mat.get_instance_id() if mat else 0
-		# PackedVector3Array/PackedColorArray são tipo por valor: pegar, mexer e devolver.
-		var acc: PackedVector3Array = by_mat.get(key, {}).get("verts", PackedVector3Array())
-		var accc: PackedColorArray = by_mat.get(key, {}).get("cols", PackedColorArray())
-		acc.append_array(surf[1])
-		accc.append_array(surf[2])
-		by_mat[key] = {"mat": mat, "verts": acc, "cols": accc}
-	var mesh := ArrayMesh.new()
-	for key in by_mat:
-		var grp: Dictionary = by_mat[key]
-		var verts: PackedVector3Array = grp["verts"]
-		var cols: PackedColorArray = grp["cols"]
-		var arrays: Array = []
-		arrays.resize(Mesh.ARRAY_MAX)
-		arrays[Mesh.ARRAY_VERTEX] = verts
-		arrays[Mesh.ARRAY_COLOR] = cols
-		var normals := PackedVector3Array()
-		normals.resize(verts.size())
-		for i in verts.size():
-			normals[i] = Vector3.UP
-		arrays[Mesh.ARRAY_NORMAL] = normals
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-		mesh.surface_set_material(mesh.get_surface_count() - 1, grp["mat"])
-	return {"mesh": mesh, "aabb": aabb}
-
-
-## Altura da porta de um predio (a maior porta), em espaco local.
-func _door_height(root: Node) -> float:
-	var best := 0.0
-	for n in _all_nodes(root):
-		if n is Node3D and ("Door" in n.name) and not (n is MeshInstance3D):
-			var a := _local_aabb(n, Transform3D())
-			if a.size.y > best and a.size.y < 8.0:
-				best = a.size.y
-	return best
-
-
-func _all_nodes(n: Node) -> Array:
-	var o: Array = [n]
-	for c in n.get_children():
-		o.append_array(_all_nodes(c))
-	return o
-
-
 func _local_aabb(n: Node, xf: Transform3D) -> AABB:
 	var out := AABB()
 	var first := true
@@ -603,73 +448,6 @@ func _measure_height(n: Node) -> float:
 		return 1.9
 	var a := _local_aabb(n, Transform3D())
 	return maxf(a.size.y, 0.5)
-
-
-func _collect(n: Node, xf: Transform3D, surfaces: Array, faces: PackedVector3Array) -> void:
-	var cur := xf
-	if n is Node3D:
-		cur = xf * (n as Node3D).transform
-	if n is MeshInstance3D:
-		var mesh: Mesh = (n as MeshInstance3D).mesh
-		if mesh:
-			for si in mesh.get_surface_count():
-				var arrays: Array = mesh.surface_get_arrays(si)
-				if arrays.size() <= Mesh.ARRAY_INDEX or arrays[Mesh.ARRAY_VERTEX] == null or arrays[Mesh.ARRAY_INDEX] == null:
-					continue
-				var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-				var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
-				var mat: Material = mesh.surface_get_material(si)
-				# As malhas do kit trazem a cor em COLOR_0 (o shader dele usava isso).
-				# Sem copiar as cores, as partes que dependem só da cor saem brancas.
-				var vcols: PackedColorArray = arrays[Mesh.ARRAY_COLOR] if arrays.size() > Mesh.ARRAY_COLOR and arrays[Mesh.ARRAY_COLOR] != null else PackedColorArray()
-				var out := PackedVector3Array()
-				var ocol := PackedColorArray()
-				for k in range(0, idx.size(), 3):
-					var ia := idx[k]
-					var ib := idx[k + 1]
-					var ic := idx[k + 2]
-					var a := cur * verts[ia]
-					var b := cur * verts[ib]
-					var c := cur * verts[ic]
-					out.append(a)
-					out.append(b)
-					out.append(c)
-					if vcols.is_empty():
-						ocol.append(Color.WHITE)
-						ocol.append(Color.WHITE)
-						ocol.append(Color.WHITE)
-					else:
-						ocol.append(vcols[ia])
-						ocol.append(vcols[ib])
-						ocol.append(vcols[ic])
-					faces.append(a)
-					faces.append(b)
-					faces.append(c)
-				surfaces.append([mat, out, ocol])
-	for c in n.get_children():
-		_collect(c, cur, surfaces, faces)
-
-
-## As construcoes cujo centro cai no chunk `coord`.
-func _structs_in(coord: Vector2i) -> Array:
-	var out: Array = []
-	if _planner == null:
-		return out
-	for v: Dictionary in _planner.villages:
-		for b: Dictionary in v["buildings"]:
-			if _chunk_of(b["pos"]) == coord:
-				out.append(b)
-	for sc: Dictionary in _planner.scattered:
-		if _chunk_of(sc["pos"]) == coord:
-			out.append(sc)
-	for ca: Dictionary in _planner.castles:
-		if _chunk_of(ca["pos"]) == coord:
-			out.append(ca)
-	return out
-
-
-func _chunk_of(p: Vector3) -> Vector2i:
-	return Vector2i(floori(p.x / CHUNK), floori(p.z / CHUNK))
 
 
 func _prop_material(kind: int) -> Material:
@@ -713,3 +491,20 @@ func _build_mesh(hm: PackedFloat32Array) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
+
+
+## Ruído suave para quebrar a cor chapada do terreno. Uma textura só, reusada
+## por todos os chunks.
+func _make_noise_texture() -> ImageTexture:
+	var n := 256
+	var noise := FastNoiseLite.new()
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	noise.frequency = 0.045
+	noise.fractal_octaves = 4
+	var img := Image.create(n, n, false, Image.FORMAT_L8)
+	for y in n:
+		for x in n:
+			var v := (noise.get_noise_2d(float(x), float(y)) + 1.0) * 0.5
+			img.set_pixel(x, y, Color(v, v, v, 1.0))
+	return ImageTexture.create_from_image(img)
+

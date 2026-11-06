@@ -1,12 +1,19 @@
 extends Node3D
 
-## Item na mão do jogador.
+## Item na mão do jogador (espada/tocha).
 ##
-## A espada e a tocha são presas ao OSSO da mão direita (`RightHand`) do esqueleto
-## do personagem, com `BoneAttachment3D`. Assim elas seguem a mão em todas as
-## animações (andar, correr, pular) e ficam bem na mão, não atrás do braço.
-##
-## A tocha tem luz real (OmniLight3D). "Colocar" larga uma tocha acesa no chão.
+## O `BoneAttachment3D` no osso `RightHand` dá a POSIÇÃO da mão. A ORIENTAÇÃO do
+## item NÃO é herdada do osso: o osso da mão está girado no repouso e o item saía
+## de cabeça para baixo (lâmina apontando para o chão). Em vez disso, a cada frame
+## o item recebe uma orientação escolhida no espaço do jogador — a lâmina fica para
+## cima, a tocha em pé, e o golpe gira em torno do eixo certo.
+
+## Para onde a lâmina da espada aponta (no espaço do jogador): para cima e à frente.
+const SWORD_DIR := Vector3(0.0, 1.0, -0.38)
+## Direção da haste da tocha (praticamente em pé).
+const TORCH_DIR := Vector3(0.0, 1.0, -0.12)
+## Deslocamento do item em relação ao osso da mão.
+const HAND_OFFSET := Vector3(0.0, 0.02, 0.0)
 
 var inventory: Node = null
 var world: Node = null
@@ -16,20 +23,21 @@ var _sword: Node3D
 var _torch: Node3D
 var _torch_light: OmniLight3D
 var _held_id := ""
+var _swing_t := 0.0
 
 
 func _ready() -> void:
 	_build_attachment()
 	_build_sword()
 	_build_torch()
+	_refresh()
 
 
-## Acha o Skeleton3D do modelo e cria uma ligação ao osso da mão direita.
 func _build_attachment() -> void:
 	var player := get_parent()
 	var skel := _find_skeleton(player)
 	if skel == null:
-		push_warning("HandItem: sem Skeleton3D, o item fica preso ao nó raiz.")
+		push_warning("HandItem: sem Skeleton3D; o item fica preso ao nó raiz.")
 		return
 	var bone := skel.find_bone("RightHand")
 	if bone < 0:
@@ -52,9 +60,67 @@ func _find_skeleton(n: Node) -> Skeleton3D:
 	return null
 
 
-## Onde os itens são pendurados (osso da mão, ou o próprio Hand).
-func _holder() -> Node3D:
-	return _attachment if _attachment else self
+func _physics_process(_delta: float) -> void:
+	_follow_hand()
+
+
+## Põe o item na mão com a orientação escolhida, no espaço do jogador.
+func _follow_hand() -> void:
+	var item := _active_item()
+	var player := get_parent() as Node3D
+	if item == null or player == null:
+		return
+	var origin: Vector3
+	if _attachment:
+		origin = _attachment.global_position
+	else:
+		origin = player.global_position + player.global_basis * Vector3(0.35, 1.2, 0.0)
+	var dir := SWORD_DIR if _held_id == "sword" else TORCH_DIR
+	var basis := _aim_basis(player.global_basis, dir)
+	# O golpe gira o item em torno do eixo lateral do jogador (corte de cima).
+	if _held_id == "sword" and _swing_t > 0.0:
+		basis = basis.rotated(player.global_basis.x, _swing_angle())
+	item.global_position = origin + player.global_basis * HAND_OFFSET
+	item.global_basis = basis
+
+
+func _active_item() -> Node3D:
+	if _held_id == "sword":
+		return _sword
+	if _held_id == "torch":
+		return _torch
+	return null
+
+
+## Base com o eixo Y apontando para `dir` (no espaço do jogador).
+func _aim_basis(player_basis: Basis, dir: Vector3) -> Basis:
+	var up := dir.normalized()
+	var fwd := Vector3(0.0, 0.0, -1.0)
+	var right := fwd.cross(up)
+	if right.length_squared() < 0.0001:
+		right = Vector3.RIGHT
+	right = right.normalized()
+	var back := right.cross(up).normalized()
+	return player_basis * Basis(right, up, back)
+
+
+## Curva do corte: sobe (0..0.5) e volta (0.5..1), em torno de -110°.
+func _swing_angle() -> float:
+	var t := _swing_t
+	var k := sin(t * PI) if t <= 0.5 else sin((1.0 - t) * PI)
+	return deg_to_rad(-110.0) * k
+
+
+## Inicia o golpe (chamado por Player.attack()).
+func swing() -> void:
+	if _held_id != "sword" or _swing_t > 0.0:
+		return
+	var tw := create_tween()
+	tw.tween_method(_set_swing, 0.0, 1.0, 0.34)
+
+
+func _set_swing(v: float) -> void:
+	_swing_t = v if v < 1.0 else 0.0
 
 
 func _mat(c: Color, metal := 0.0, rough := 0.6, emis := 0.0) -> StandardMaterial3D:
@@ -115,10 +181,8 @@ func _build_sword() -> void:
 	pommel.material_override = _mat(Color(0.55, 0.42, 0.22), 0.6, 0.4)
 	pommel.position = Vector3(0, -0.07, 0)
 	_sword.add_child(pommel)
-	# Aponta para frente a partir da mão.
-	_sword.transform = Transform3D(Basis(Vector3.RIGHT, deg_to_rad(-95)), Vector3(0.02, 0.02, 0.02))
 	_sword.visible = false
-	_holder().add_child(_sword)
+	add_child(_sword)
 
 
 func _build_torch() -> void:
@@ -158,10 +222,8 @@ func _build_torch() -> void:
 	_torch_light.shadow_enabled = false
 	_torch_light.position = Vector3(0, 0.55, 0)
 	_torch.add_child(_torch_light)
-	# Segura em pé, na mão.
-	_torch.transform = Transform3D(Basis(Vector3.RIGHT, deg_to_rad(-95)), Vector3(0.02, 0.0, 0.0))
 	_torch.visible = false
-	_holder().add_child(_torch)
+	add_child(_torch)
 
 
 func set_inventory(inv: Node) -> void:
