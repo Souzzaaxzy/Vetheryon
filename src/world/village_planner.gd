@@ -51,9 +51,22 @@ const DECOR_PROPS: Array[String] = [
 	"decoration/props/resource_stone", "decoration/props/pallet",
 ]
 
-## Escala: os modelos do KayKit são de grade hexagonal (~1 hex = 1 unidade). Para
-## uma casa ter ~7 m de largura (como as nossas), multiplicamos por este fator.
+## Escala dos modelos do KayKit (grade hexagonal, ~1 hex = 1 unidade). Não existe
+## nó "Door" nos glTF, então a escala antiga "pela porta" sempre caía no padrão 1.0
+## e os prédios ficavam do tamanho do personagem. Agora cada categoria tem sua
+## escala, calibrada para um tamanho de mundo real:
+##   casa ~6 m de altura, igreja ~8 m, muralha ~7 m, torre ~14 m, castelo ~28 m.
 const KK_SCALE := 3.4
+const SCALE_HOUSE := 6.6      # building_home_A (0.93 u) -> ~6 m
+const SCALE_BIG := 5.4        # taverna/igreja/quartel/mercado (1.4-1.7 u) -> 7.5-9 m
+const SCALE_CASTLE := 6.2     # fortaleza (3.98 u) -> ~25 m
+const SCALE_TOWER := 6.0      # torre A (2.19 u) -> ~13 m
+const SCALE_WALL := 5.2       # peça de muralha (1.10 u) -> ~5.7 m
+const SCALE_TREE := 8.0       # árvore isolada (1.20 u) -> ~9.6 m
+const SCALE_TREE_GROUP := 5.0 # moita (0.93 u) -> ~4.6 m
+const SCALE_ROCK := 6.0
+const SCALE_PROP := 5.0       # barril/caixa (0.21 u) -> ~1 m
+const SCALE_TENT := 7.0       # barraca (0.52 u) -> ~3.6 m
 ## Cor sorteada por vila/castelo.
 const COLORS: Array[String] = ["blue", "green", "red", "yellow"]
 
@@ -213,6 +226,32 @@ func _building_path(name: String, color: String) -> String:
 	return KK + "buildings/" + color + "/" + name + "_" + color + ".gltf"
 
 
+## Escala de um modelo pelo seu papel no mundo. Cada prédio tem proporção própria
+## (uma igreja é mais alta que uma casa), então a tabela é por tipo — assim todos
+## ficam em tamanho realista, e não todos multiplicados pelo mesmo fator.
+func _model_scale(path: String) -> float:
+	var n := path.get_file().get_basename()
+	if "castle" in n:
+		return SCALE_CASTLE
+	if "tower" in n:
+		return SCALE_TOWER
+	if "wall_" in n:
+		return SCALE_WALL
+	if "church" in n or "barracks" in n or "tavern" in n or "market" in n \
+			or "blacksmith" in n or "lumbermill" in n or "watermill" in n \
+			or "windmill" in n or "mine" in n or "archeryrange" in n:
+		return SCALE_BIG
+	if "home" in n or "well" in n:
+		return SCALE_HOUSE
+	if "tent" in n:
+		return SCALE_TENT
+	if "tree" in n:
+		return SCALE_TREE_GROUP if "s_" in n or "trees_" in n else SCALE_TREE
+	if "rock" in n:
+		return SCALE_ROCK
+	return SCALE_PROP
+
+
 # --- castelos ---------------------------------------------------------------
 
 ## Um castelo montado: muralha em anel + torres nos cantos + portão + fortaleza.
@@ -256,8 +295,10 @@ func _build_castle(gen: LFTerrainGenerator, near: Vector2, placed: Array, radius
 	placed.append(c)
 
 	var parts: Array = []
-	var wall := 22.0   # meio-lado do quadrado da muralha
-	var seg := 6.0     # comprimento de cada peça de muralha (no mundo)
+	var wall_scale := _model_scale(KK + "buildings/neutral/wall_straight.gltf")
+	# Comprimento de uma peça de muralha no mundo (o modelo tem 2 u de lado).
+	var seg := 2.0 * wall_scale
+	var wall := 34.0   # meio-lado do quadrado da muralha (m)
 	var color: String = COLORS[_rng.randi() % COLORS.size()]
 	# Muralha: 4 lados, com portão no lado sul.
 	var sides := [
@@ -278,18 +319,21 @@ func _build_castle(gen: LFTerrainGenerator, near: Vector2, placed: Array, radius
 			if si == 1 and i == count / 2:
 				piece = CASTLE_GATE   # portão no meio do lado sul
 			parts.append({"scene": KK + "buildings/neutral/" + piece + ".gltf",
-				"pos": Vector3(p.x, level, p.y), "yaw": yaw, "scale": KK_SCALE * 1.5})
+				"pos": Vector3(p.x, level, p.y), "yaw": yaw, "scale": wall_scale})
 	# Torres nos 4 cantos (as peças existem só nas versões coloridas).
+	var tower_scale := _model_scale(KK + "buildings/blue/building_tower_A_blue.gltf")
+	var base_scale := _model_scale(KK + "buildings/blue/building_tower_base_blue.gltf")
+	var base_h := 1.50 * base_scale   # altura da base, em metros (o modelo tem 1.5 u)
 	for cx in [-wall, wall]:
 		for cz in [-wall, wall]:
 			var p := c + Vector2(cx, cz)
 			parts.append({"scene": _building_path(CASTLE_TOWER_BASE, color),
-				"pos": Vector3(p.x, level, p.y), "yaw": 0.0, "scale": KK_SCALE * 1.5})
+				"pos": Vector3(p.x, level, p.y), "yaw": 0.0, "scale": base_scale})
 			parts.append({"scene": _building_path(CASTLE_TOWER, color),
-				"pos": Vector3(p.x, level + 3.4, p.y), "yaw": 0.0, "scale": KK_SCALE * 1.5})
+				"pos": Vector3(p.x, level + base_h, p.y), "yaw": 0.0, "scale": tower_scale})
 	# Fortaleza (castelo) no centro.
 	parts.append({"scene": _building_path(CASTLE_KEEP, color),
-		"pos": Vector3(c.x, level, c.y), "yaw": _rng.randf() * TAU, "scale": KK_SCALE * 1.6})
+		"pos": Vector3(c.x, level, c.y), "yaw": _rng.randf() * TAU, "scale": SCALE_CASTLE})
 	# As peças entram na lista de estruturas soltas (montadas no chunk certo).
 	for pt: Dictionary in parts:
 		scattered.append(pt)
@@ -331,7 +375,7 @@ func _scatter_at(gen: LFTerrainGenerator, c: Vector2, placed: Array) -> void:
 			return
 	var roll := _rng.randf()
 	var path := ""
-	var scale := KK_SCALE
+	var scale := SCALE_PROP
 	var stamp_r := 4.0
 	var level: float = gen.get_height(c.x, c.y)
 	if roll < 0.18:
@@ -341,21 +385,21 @@ func _scatter_at(gen: LFTerrainGenerator, c: Vector2, placed: Array) -> void:
 		var name: String = big[_rng.randi() % big.size()]
 		var color: String = COLORS[_rng.randi() % COLORS.size()]
 		path = _building_path(name, color)
-		stamp_r = 8.0
+		scale = _model_scale(path)
+		stamp_r = 8.0 * (scale / KK_SCALE)
 	elif roll < 0.30:
 		# Acampamento.
 		path = KK + "decoration/props/tent.gltf"
-		scale = KK_SCALE * 1.3
+		scale = SCALE_TENT
 		stamp_r = 5.0
 	else:
 		# Natureza: árvore ou pedra.
 		if _rng.randf() < 0.6:
 			path = KK + DECOR_TREES[_rng.randi() % DECOR_TREES.size()] + ".gltf"
-			scale = KK_SCALE * 2.6   # árvores altas
 		else:
 			path = KK + DECOR_ROCKS[_rng.randi() % DECOR_ROCKS.size()] + ".gltf"
-			scale = KK_SCALE * 1.6
-		stamp_r = 2.0
+		scale = _model_scale(path)
+		stamp_r = 2.0 * (scale / KK_SCALE)
 	if stamp_r > 3.0:
 		_stamps.add(c, stamp_r, level, 6.0)
 		gen.ground_mask.add_circle(c, stamp_r - 1.0)
@@ -365,12 +409,15 @@ func _scatter_at(gen: LFTerrainGenerator, c: Vector2, placed: Array) -> void:
 
 
 func _try_place(scene: String, pos: Vector2, yaw: float, taken: Array, out: Array, level: float, r: float) -> bool:
+	# O raio de separação cresce com o tamanho do modelo: um prédio maior precisa
+	# de mais espaço livre, senão as caixas de colisão de dois vizinhos se tocam.
+	var model_r := r * (_model_scale(scene) / KK_SCALE)
 	for t: Dictionary in taken:
-		var need: float = float(t["r"]) + r + 1.5
+		var need: float = float(t["r"]) + model_r + 1.5
 		if (t["pos"] as Vector2).distance_squared_to(pos) < need * need:
 			return false
-	taken.append({"pos": pos, "r": r})
-	out.append({"scene": scene, "pos": Vector3(pos.x, level, pos.y), "yaw": yaw, "scale": KK_SCALE})
+	taken.append({"pos": pos, "r": model_r})
+	out.append({"scene": scene, "pos": Vector3(pos.x, level, pos.y), "yaw": yaw, "scale": _model_scale(scene)})
 	return true
 
 

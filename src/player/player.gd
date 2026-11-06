@@ -32,6 +32,7 @@ var _anim: AnimationPlayer
 var _current: String = ""
 var _world: Node
 var _attack_t := 0.0
+var _attack_len := 0.45
 var _hand: Node3D
 
 
@@ -95,22 +96,47 @@ func _physics_process(delta: float) -> void:
 		_attack_t = maxf(0.0, _attack_t - delta)
 
 
-## Ataca com o item na mão (a espada balança; só é "ataque" se for arma).
+## Ataca com o item na mão: toca a animação de golpe do personagem (o rig já traz
+## "Punch") e gira a lâmina junto, para o corte ser um movimento só do corpo e da
+## arma — sem a espada "sair da mão".
 func attack() -> void:
 	if _attack_t > 0.0:
 		return
-	_attack_t = 0.45
-	var item = null
+	_attack_t = _attack_len
+	# Sem inventário ligado (testes/cena isolada), usa o item visível na mão.
+	var id := _held_id()
+	if id != "sword":
+		return
+	_play_oneshot("Punch")
+
+
+## Id do item na mão (do inventário; cai no que a mão mostra, se não houver).
+func _held_id() -> String:
 	if _hand and _hand.inventory:
-		item = _hand.inventory.held_item()
-	var id: String = item.get("id", "") if item is Dictionary else ""
-	if id == "sword":
-		_swing()
+		var item = _hand.inventory.held_item()
+		if item is Dictionary:
+			return str(item.get("id", ""))
+	if _hand and "_held_id" in _hand:
+		return str(_hand.get("_held_id"))
+	return ""
 
 
-func _swing() -> void:
-	if _hand and _hand.has_method("swing"):
-		_hand.swing()
+## Toca uma animação uma vez e volta para a animação de locomoção ao terminar.
+func _play_oneshot(anim_name: String) -> void:
+	if _anim == null or not _anim.has_animation(anim_name):
+		return
+	var anim := _anim.get_animation(anim_name)
+	if anim:
+		anim.loop_mode = Animation.LOOP_NONE
+	_current = anim_name
+	_anim.play(anim_name, 0.08)
+	# Volta para Idle/Walk/Run quando o golpe acabar.
+	var dur := anim.length if anim else _attack_len
+	get_tree().create_timer(dur * 0.85).timeout.connect(func() -> void:
+		if is_instance_valid(self):
+			_current = ""
+			_update_animation()
+	)
 
 
 ## É a arma na mão? (para o HUD saber)
@@ -136,6 +162,9 @@ func _check_void() -> void:
 
 func _update_animation() -> void:
 	if not _anim:
+		return
+	# Durante o golpe, a animação de ataque manda: a locomoção não a interrompe.
+	if _attack_t > 0.0 and _current == "Punch":
 		return
 	if not is_on_floor():
 		_play("Jump")

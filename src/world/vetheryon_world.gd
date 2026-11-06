@@ -14,15 +14,23 @@ class_name VetheryonWorld
 
 const CHUNK := LFTileBaker.BLOCK          # 128 m
 const BLOCK_CELLS := LFTileBaker.BLOCK_CELLS
-## 3x3 chunks em volta do jogador: garante terreno em TODAS as direções (não só
-## em cruz), então nenhuma estrutura fica pendurada sobre o vazio. O raio de visão
-## das estruturas (120 m) cabe dentro dessa área.
+## 5x5 chunks em volta do jogador (25). Em vez de manter 25 blocos sempre
+## visíveis (eram 874 draw calls e o FPS caía para ~8), cada chunk recebe uma
+## distância de visibilidade: o mundo continua sólido de perto, mas o que está
+## longe deixa de ser desenhado. É isso que destrava o celular.
 const CHUNK_OFFSETS: Array[Vector2i] = [
-	Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1),
-	Vector2i(-1, 0), Vector2i(0, 0), Vector2i(1, 0),
-	Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1),
+	Vector2i(-2, -2), Vector2i(-1, -2), Vector2i(0, -2), Vector2i(1, -2), Vector2i(2, -2),
+	Vector2i(-2, -1), Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1), Vector2i(2, -1),
+	Vector2i(-2, 0), Vector2i(-1, 0), Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0),
+	Vector2i(-2, 1), Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1),
+	Vector2i(-2, 2), Vector2i(-1, 2), Vector2i(0, 2), Vector2i(1, 2), Vector2i(2, 2),
 ]
-const MAX_PER_FRAME := 2                  # montagens por frame (limita o travamento)
+const MAX_PER_FRAME := 1                  # montagens por frame (limita o travamento)
+## O terreno aparece até esta distância; além disso o chunk existe (colisão) mas
+## não é desenhado.
+const TERRAIN_VIEW := 240.0
+## A vegetação (MultiMesh, o que mais pesa) some bem antes.
+const PROPS_VIEW := 130.0
 
 @export var world_seed: int = 20261104
 @export var preset: String = "Rolling Plains"
@@ -288,6 +296,8 @@ func _mount_chunk(coord: Vector2i, data: Dictionary) -> void:
 	mat.set_shader_parameter("noise_tex", _noise_tex)
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.visibility_range_end = TERRAIN_VIEW
+	mi.visibility_range_end_margin = 40.0
 	root.add_child(mi)
 
 	# Colisão (HeightMapShape3D).
@@ -310,28 +320,66 @@ func _mount_chunk(coord: Vector2i, data: Dictionary) -> void:
 	root.add_child(body)
 
 	# Props (arvores/rochas) via MultiMesh.
+	#
+	# Cada (tipo, variante) do gerador virava um MultiMeshInstance3D próprio: num
+	# bloco de 128 m isso dava ~42 nós por chunk (~1000 no mundo todo) e cada nó é
+	# uma draw call — era isso que travava. Agora:
+	#   * o que NÃO balança com o vento (grama, flores, rochas, troncos, cristais,
+	#     falésias...) é fundido numa malha por material — 1 draw call por material;
+	#   * as árvores continuam em MultiMesh (o shader do vento precisa da matriz por
+	#     instância para dobrar cada árvore em torno da própria base).
+	# Com o LOD por distância, as draw calls caem de ~42 para ~8 por chunk.
 	var mms: Dictionary = bd["mms"]
+	var static_by_mat: Dictionary = {}   # material RID -> {mat, st: SurfaceTool}
+	var by_mesh: Dictionary = {}         # mesh RID -> {mesh, mat, xforms: PackedFloat32Array}
 	for key: Vector2i in mms:
 		var meshes: Array = _lib.variants.get(key.x, [])
 		if key.y >= meshes.size():
 			continue
+		var m: Mesh = meshes[key.y]
 		var buf: PackedFloat32Array = mms[key]
+		if _lib.canopy_materials.has(key.x) or _lib.trunk_materials.has(key.x):
+			var id := m.get_rid()
+			if not by_mesh.has(id):
+				by_mesh[id] = {"mesh": m, "mat": _prop_material(key.x), "xforms": PackedFloat32Array()}
+			(by_mesh[id]["xforms"] as PackedFloat32Array).append_array(buf)
+			continue
+		var surf_mat: Material = m.surface_get_material(0) if m.get_surface_count() > 0 else null
+		var mid: int = surf_mat.get_rid().get_id() if surf_mat else 0
+		if not static_by_mat.has(mid):
+			var st := SurfaceTool.new()
+			st.begin(Mesh.PRIMITIVE_TRIANGLES)
+			static_by_mat[mid] = {"mat": surf_mat, "st": st}
+		var st2: SurfaceTool = static_by_mat[mid]["st"]
+		for i in range(buf.size() / 12):
+			st2.append_from(m, 0, _xform_at(buf, i))
+
+	for mid in static_by_mat:
+		var grp0: Dictionary = static_by_mat[mid]
+		var gm := MeshInstance3D.new()
+		gm.mesh = (grp0["st"] as SurfaceTool).commit()
+		gm.material_override = grp0["mat"]
+		gm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		gm.visibility_range_end = PROPS_VIEW
+		gm.visibility_range_end_margin = 25.0
+		root.add_child(gm)
+
+	for id in by_mesh:
+		var grp: Dictionary = by_mesh[id]
+		var buf2: PackedFloat32Array = grp["xforms"]
 		var multi := MultiMesh.new()
 		multi.transform_format = MultiMesh.TRANSFORM_3D
-		multi.mesh = meshes[key.y]
-		multi.instance_count = buf.size() / 12
+		multi.mesh = grp["mesh"]
+		multi.instance_count = buf2.size() / 12
 		for i in range(multi.instance_count):
-			var b := i * 12
-			var t := Transform3D(
-					Basis(Vector3(buf[b], buf[b + 4], buf[b + 8]),
-							Vector3(buf[b + 1], buf[b + 5], buf[b + 9]),
-							Vector3(buf[b + 2], buf[b + 6], buf[b + 10])),
-					Vector3(buf[b + 3], buf[b + 7], buf[b + 11]))
-			multi.set_instance_transform(i, t)
+			multi.set_instance_transform(i, _xform_at(buf2, i))
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = multi
 		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-		mmi.material_override = _prop_material(key.x)
+		mmi.material_override = grp["mat"]
+		# LOD: a vegetação some suave antes do fim do terreno (é o que mais pesa).
+		mmi.visibility_range_end = PROPS_VIEW
+		mmi.visibility_range_end_margin = 25.0
 		root.add_child(mmi)
 
 	# Colisao dos props (troncos, pedras, troncos caidos) no formato do addon:
@@ -450,8 +498,19 @@ func _measure_height(n: Node) -> float:
 	return maxf(a.size.y, 0.5)
 
 
+
+
+## Transform de uma instância no buffer achatado (12 floats: 9 da base + 3 da posição).
+static func _xform_at(buf: PackedFloat32Array, i: int) -> Transform3D:
+	var b := i * 12
+	return Transform3D(
+			Basis(Vector3(buf[b], buf[b + 4], buf[b + 8]),
+					Vector3(buf[b + 1], buf[b + 5], buf[b + 9]),
+					Vector3(buf[b + 2], buf[b + 6], buf[b + 10])),
+			Vector3(buf[b + 3], buf[b + 7], buf[b + 11]))
+
+
 func _prop_material(kind: int) -> Material:
-	# Materiais simples (a cor do tronco/folha fica na malha; aqui só um fallback).
 	if _lib.trunk_materials.has(kind):
 		return _lib.trunk_materials[kind]
 	if _lib.canopy_materials.has(kind):
