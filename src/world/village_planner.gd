@@ -62,9 +62,9 @@ const SCALE_BIG := 5.4        # taverna/igreja/quartel/mercado (1.4-1.7 u) -> 7.
 const SCALE_CASTLE := 6.2     # fortaleza (3.98 u) -> ~25 m
 const SCALE_TOWER := 6.0      # torre A (2.19 u) -> ~13 m
 const SCALE_WALL := 5.2       # peça de muralha (1.10 u) -> ~5.7 m
-const SCALE_TREE := 8.0       # árvore isolada (1.20 u) -> ~9.6 m
-const SCALE_TREE_GROUP := 5.0 # moita (0.93 u) -> ~4.6 m
-const SCALE_ROCK := 6.0
+const SCALE_TREE := 14.0      # árvore isolada (1.20 u) -> ~17 m: gigante
+const SCALE_TREE_GROUP := 9.0 # moita (0.93 u) -> ~8 m
+const SCALE_ROCK := 8.0       # pedra (0.07-0.19 u) -> 0.6-1.5 m; empilhadas viram montanha
 const SCALE_PROP := 5.0       # barril/caixa (0.21 u) -> ~1 m
 const SCALE_TENT := 7.0       # barraca (0.52 u) -> ~3.6 m
 ## Cor sorteada por vila/castelo.
@@ -245,8 +245,10 @@ func _model_scale(path: String) -> float:
 		return SCALE_HOUSE
 	if "tent" in n:
 		return SCALE_TENT
+	if "trees_" in n:
+		return SCALE_TREE_GROUP
 	if "tree" in n:
-		return SCALE_TREE_GROUP if "s_" in n or "trees_" in n else SCALE_TREE
+		return SCALE_TREE
 	if "rock" in n:
 		return SCALE_ROCK
 	return SCALE_PROP
@@ -260,7 +262,7 @@ func _plan_castles(gen: LFTerrainGenerator) -> void:
 	var spawn: Vector2 = gen.spawn_xz
 	var placed: Array = []
 	# Castelo principal garantido a ~400 m do spawn.
-	_build_castle(gen, spawn + Vector2(330.0, 240.0), placed, 30.0)
+	_build_castle(gen, spawn + Vector2(330.0, 240.0), placed, 72.0)
 	# Outros castelos espalhados.
 	var spacing := 780.0
 	var n := 4
@@ -274,7 +276,7 @@ func _plan_castles(gen: LFTerrainGenerator) -> void:
 				continue
 			if not _spot_ok(gen, c, placed, spacing * 0.7):
 				continue
-			_build_castle(gen, c, placed, 30.0)
+			_build_castle(gen, c, placed, 72.0)
 
 
 func _build_castle(gen: LFTerrainGenerator, near: Vector2, placed: Array, radius: float) -> void:
@@ -293,19 +295,20 @@ func _build_castle(gen: LFTerrainGenerator, near: Vector2, placed: Array, radius
 	gen.ground_mask.add_circle(c, radius + 4.0)
 	gen.add_site("castle_%d" % placed.size(), SitePlan.new(radius), [Vector3(c.x, level, c.y), 0.0], 12.0)
 	placed.append(c)
+	castles.append({"center": c, "radius": radius, "level": level})
 
 	var parts: Array = []
 	var wall_scale := _model_scale(KK + "buildings/neutral/wall_straight.gltf")
 	# Comprimento de uma peça de muralha no mundo (o modelo tem 2 u de lado).
 	var seg := 2.0 * wall_scale
-	var wall := 34.0   # meio-lado do quadrado da muralha (m)
+	var wall := 62.0   # meio-lado do quadrado da muralha (m) -> ~124 m de lado
 	var color: String = COLORS[_rng.randi() % COLORS.size()]
 	# Muralha: 4 lados, com portão no lado sul.
 	var sides := [
-		[Vector2(0, -wall), Vector2(1, 0)],   # norte
-		[Vector2(0, wall), Vector2(1, 0)],    # sul
-		[Vector2(-wall, 0), Vector2(0, 1)],   # oeste
-		[Vector2(wall, 0), Vector2(0, 1)],    # leste
+		[Vector2(0, -wall), Vector2(1, 0)],   # norte (corre em X)
+		[Vector2(0, wall), Vector2(1, 0)],    # sul   (corre em X)
+		[Vector2(-wall, 0), Vector2(0, 1)],   # oeste (corre em Z)
+		[Vector2(wall, 0), Vector2(0, 1)],    # leste (corre em Z)
 	]
 	for si in sides.size():
 		var base: Vector2 = sides[si][0]
@@ -314,7 +317,10 @@ func _build_castle(gen: LFTerrainGenerator, near: Vector2, placed: Array, radius
 		for i in count:
 			var t := -wall + (i + 0.5) * (wall * 2.0 / count)
 			var p: Vector2 = c + base + dir * t
-			var yaw := 0.0 if dir.y != 0 else PI * 0.5
+			# O modelo corre no eixo X com yaw 0. Então quem corre em X (dir.x) fica
+			# em yaw 0 e quem corre em Z fica em 90°. (Antes estava invertido, e as
+			# muralhas saíam atravessadas — "| | | |" em vez de "------".)
+			var yaw := 0.0 if dir.x != 0.0 else PI * 0.5
 			var piece := "wall_straight"
 			if si == 1 and i == count / 2:
 				piece = CASTLE_GATE   # portão no meio do lado sul
@@ -331,9 +337,25 @@ func _build_castle(gen: LFTerrainGenerator, near: Vector2, placed: Array, radius
 				"pos": Vector3(p.x, level, p.y), "yaw": 0.0, "scale": base_scale})
 			parts.append({"scene": _building_path(CASTLE_TOWER, color),
 				"pos": Vector3(p.x, level + base_h, p.y), "yaw": 0.0, "scale": tower_scale})
+	# Torres também no meio de cada lado, para a muralha não ficar um muro liso.
+	for tp in [Vector2(0, -wall), Vector2(0, wall), Vector2(-wall, 0), Vector2(wall, 0)]:
+		var p2: Vector2 = c + tp
+		parts.append({"scene": _building_path(CASTLE_TOWER_BASE, color),
+			"pos": Vector3(p2.x, level, p2.y), "yaw": 0.0, "scale": base_scale})
+		parts.append({"scene": _building_path(CASTLE_TOWER, color),
+			"pos": Vector3(p2.x, level + base_h, p2.y), "yaw": 0.0, "scale": tower_scale})
 	# Fortaleza (castelo) no centro.
 	parts.append({"scene": _building_path(CASTLE_KEEP, color),
 		"pos": Vector3(c.x, level, c.y), "yaw": _rng.randf() * TAU, "scale": SCALE_CASTLE})
+	# Prédios dentro da muralha, para a praça interna ter vida.
+	for bi in 6:
+		var ang := TAU * bi / 6.0 + _rng.randf() * 0.5
+		var dist := _rng.randf_range(wall * 0.35, wall * 0.62)
+		var bp := c + Vector2(cos(ang), sin(ang)) * dist
+		var bname: String = VILLAGE_BUILDINGS[_rng.randi() % VILLAGE_BUILDINGS.size()]
+		parts.append({"scene": _building_path(bname, color),
+			"pos": Vector3(bp.x, level, bp.y), "yaw": _rng.randf() * TAU,
+			"scale": _model_scale(_building_path(bname, color))})
 	# As peças entram na lista de estruturas soltas (montadas no chunk certo).
 	for pt: Dictionary in parts:
 		scattered.append(pt)

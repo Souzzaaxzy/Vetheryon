@@ -5,7 +5,7 @@
 [ext_resource type="Script" path="res://src/ui/touch_controls.gd" id="3_touch"]
 [ext_resource type="Script" path="res://src/ui/hud.gd" id="4_hud"]
 [ext_resource type="Script" path="res://src/player/camera_rig.gd" id="6_camrig"]
-[ext_resource type="Script" path="res://src/ui/start_screen.gd" id="7_start"]
+[ext_resource type="Script" path="res://src/ui/world_menu.gd" id="7_start"]
 [ext_resource type="Script" path="res://src/game_root.gd" id="8_root"]
 [ext_resource type="Script" path="res://src/ui/loading_screen.gd" id="9_loading"]
 [ext_resource type="Script" path="res://src/ui/pause_menu.gd" id="10_pause"]
@@ -75,7 +75,7 @@ script = ExtResource("4_hud")
 script = ExtResource("3_touch")
 player_path = NodePath("../Player")
 
-[node name="StartScreen" type="CanvasLayer" parent="."]
+[node name="WorldMenu" type="CanvasLayer" parent="."]
 layer = 10
 script = ExtResource("7_start")
 

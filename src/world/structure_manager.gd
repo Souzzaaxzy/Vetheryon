@@ -13,7 +13,9 @@ extends Node3D
 ## uma vez por tipo, em memória e em disco.
 
 const CACHE_DIR := "user://struct_cache"
-const CACHE_VERSION := 3
+## Versão do formato do cache. Suba SEMPRE que o cozimento mudar (senão o jogo
+## reaproveita malhas antigas do disco, sem as mudanças).
+const CACHE_VERSION := 4
 ## Célula do índice espacial (m). Grande o bastante para poucas células por busca.
 const CELL := 64.0
 
@@ -178,6 +180,27 @@ func _instance(baked: BakedStructure, e: Dictionary) -> Node3D:
 		cs.shape = baked.shape
 		body.add_child(cs)
 		root.add_child(body)
+	# Interior: a sala aparece por dentro e tem colisão própria (piso + paredes).
+	# A casca externa é "furada" na frente pelo `shape` já recortado, então o
+	# jogador consegue atravessar o vão da porta e entrar.
+	if baked.interior_mesh != null:
+		var imi := MeshInstance3D.new()
+		imi.mesh = baked.interior_mesh
+		imi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		imi.visibility_range_end = release_radius
+		imi.visibility_range_end_margin = 24.0
+		imi.position = baked.interior_offset
+		root.add_child(imi)
+		if baked.interior_shape != null:
+			var ib := StaticBody3D.new()
+			ib.add_to_group("structure", true)
+			ib.collision_layer = 1
+			ib.collision_mask = 0
+			var ics := CollisionShape3D.new()
+			ics.shape = baked.interior_shape
+			ics.position = baked.interior_offset
+			ib.add_child(ics)
+			root.add_child(ib)
 	return root
 
 
@@ -263,12 +286,109 @@ static func _bake(scene: PackedScene, path: String, player_h: float,
 
 	var baked := BakedStructure.new()
 	baked.mesh = mesh
-	baked.shape = mesh.create_trimesh_shape()
 	baked.default_scale = default_scale
+	# Interior (sala com móveis) — só para prédios habitáveis.
+	var interior := build_interior(baked, path, path.hash())
+	if not interior.is_empty():
+		baked.interior_mesh = interior["mesh"]
+		baked.interior_shape = interior["shape"]
+		baked.interior_offset = interior["offset"]
+		# Abre o vão da porta na casca EXTERNA: sem isso o prédio continua um bloco
+		# fechado e o jogador não entra (só vê a parede de fora).
+		baked.mesh = _carve_door(mesh, baked.interior_offset, interior["size"])
+	baked.shape = baked.mesh.create_trimesh_shape()
 	baked.faces = 0
 	if baked.shape != null:
 		baked.faces = baked.shape.get_faces().size() / 3
 	return baked
+
+
+## Remove os triângulos da casca que caem na frente do vão da porta, deixando uma
+## abertura de verdade (na malha E, por consequência, na colisão).
+static func _carve_door(mesh: ArrayMesh, offset: Vector3, room_size: Vector3) -> ArrayMesh:
+	var out := ArrayMesh.new()
+	# Frações do tamanho da sala (a malha está em unidades nativas do modelo).
+	var door_w := room_size.x * 0.30
+	var door_h := room_size.y * 0.62
+	var front := offset.z + room_size.z * 0.5   # face +Z do prédio
+	for si in mesh.get_surface_count():
+		var arr: Array = mesh.surface_get_arrays(si)
+		var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+		var idx = arr[Mesh.ARRAY_INDEX]
+		var kept := PackedVector3Array()
+		if idx == null:
+			# Sem índices: trata como triângulos soltos.
+			for k in range(0, verts.size(), 3):
+				if not _in_door(verts[k], verts[k + 1], verts[k + 2], front, door_w, door_h, offset):
+					kept.append_array(PackedVector3Array([verts[k], verts[k + 1], verts[k + 2]]))
+		else:
+			var ids: PackedInt32Array = idx
+			for k in range(0, ids.size(), 3):
+				var a := verts[ids[k]]
+				var b := verts[ids[k + 1]]
+				var c := verts[ids[k + 2]]
+				if not _in_door(a, b, c, front, door_w, door_h, offset):
+					kept.append_array(PackedVector3Array([a, b, c]))
+		if kept.is_empty():
+			continue
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for v: Vector3 in kept:
+			st.add_vertex(v)
+		var sub: ArrayMesh = st.commit()
+		if sub != null:
+			for s2 in sub.get_surface_count():
+				out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, sub.surface_get_arrays(s2))
+				out.surface_set_material(out.get_surface_count() - 1, mesh.surface_get_material(si))
+	return out
+
+
+## True se o triângulo está na área do vão (frente, dentro da largura/altura da porta).
+static func _in_door(a: Vector3, b: Vector3, c: Vector3, front: float,
+		door_w: float, door_h: float, offset: Vector3) -> bool:
+	var mid := (a + b + c) / 3.0
+	# Só a face frontal (perto do plano da frente).
+	if absf(mid.z - front) > 0.35:
+		return false
+	if mid.y > offset.y + door_h:
+		return false
+	if absf(mid.x - offset.x) > door_w * 0.5:
+		return false
+	return true
+
+
+## Constrói o interior de um prédio: uma sala com piso, paredes, teto e móveis,
+## encaixada no volume do prédio, e a colisão RECORTADA para o vão da porta (senão
+## o jogador não conseguiria entrar). Devolve {mesh, shape, floor_y}.
+static func build_interior(baked: BakedStructure, path: String, seed_val: int) -> Dictionary:
+	if baked == null or baked.mesh == null:
+		return {}
+	# Só prédios: muralhas, torres e enfeites ficam de fora.
+	var n := path.get_file().get_basename()
+	var is_building := ("building" in n) and not ("wall" in n) and not ("tower" in n) \
+			and not ("fence" in n) and not ("stage" in n) and not ("bridge" in n) \
+			and not ("scaffolding" in n) and not ("dirt" in n) and not ("grain" in n) \
+			and not ("destroyed" in n)
+	if not is_building:
+		return {}
+	var aabb: AABB = baked.mesh.get_aabb()
+	# A malha cozida está em UNIDADES NATIVAS do modelo (a escala real é aplicada na
+	# instância, por tipo), então os limites aqui são nativos — proporcionais.
+	var size := aabb.size * 0.82
+	# Só faz sentido abrir interior em prédio com porte suficiente.
+	if size.x < 0.45 or size.z < 0.45 or size.y < 0.55:
+		return {}
+	var room := InteriorBuilder.build(size, seed_val)
+	if room.is_empty():
+		return {}
+	var floor_y := aabb.position.y + 0.02
+	var shape: ConcavePolygonShape3D = (room["mesh"] as ArrayMesh).create_trimesh_shape()
+	return {
+		"mesh": room["mesh"],
+		"shape": shape,
+		"offset": Vector3(aabb.position.x + aabb.size.x * 0.5, floor_y, aabb.position.z + aabb.size.z * 0.5),
+		"size": size,
+	}
 
 
 ## Reúne as malhas por material, já no espaço local escalado.

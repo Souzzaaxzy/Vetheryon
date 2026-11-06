@@ -51,6 +51,15 @@ var _player: Node3D
 var _chunks: Dictionary = {}       # Vector2i -> Node3D (montado)
 var _inflight: Dictionary = {}     # Vector2i -> true (gerando agora numa thread)
 var _center := Vector2i(999999, 999999)
+## Cache dos blocos JÁ GERADOS (como o cache de chunks do Minecraft). Sem ele, o
+## jogador andando para a frente e para trás sobre a borda regenerava o mesmo
+## chunk (127 ms cada). Com ele, voltar é instantâneo.
+var _cache: Dictionary = {}        # Vector2i -> block data
+## Fila de geração, sempre da mais perto para a mais longe do jogador.
+var _queue: Array[Vector2i] = []
+## Quantas gerações rodam ao mesmo tempo. O Minecraft usa poucos workers; disparar
+## as 25 de uma vez entope a pool e as do lado do jogador chegam por último.
+var _max_tasks := 3
 
 # As threads escrevem aqui; o Mutex protege a fila. Montamos no thread principal.
 var _mutex := Mutex.new()
@@ -159,6 +168,7 @@ func ground_height(x: float, z: float) -> float:
 func _physics_process(_delta: float) -> void:
 	if _player:
 		_update_center(false)
+	_dispatch()
 	_mount_pending()
 
 
@@ -172,18 +182,52 @@ func _update_center(force: bool) -> void:
 	var wanted := {}
 	for off in CHUNK_OFFSETS:
 		wanted[c + off] = true
-		_request(c + off)
-	# Libera os que saíram da cruz (o jogador pode voltar: serao gerados de novo).
+	# Libera os que saíram da área (o BLOCO fica no cache; a malha é descartada).
 	for coord: Vector2i in _chunks.keys():
 		if not wanted.has(coord):
 			var node: Node3D = _chunks[coord]
 			_chunks.erase(coord)
 			node.queue_free()
+	# Reenfileira o que falta, do mais perto para o mais longe (prioridade).
+	var pend: Array = []
+	for coord: Vector2i in wanted:
+		if _chunks.has(coord) or _inflight.has(coord):
+			continue
+		if _cache.has(coord):
+			continue   # já gerado: _fill_from_cache monta sem thread
+		pend.append(coord)
+	pend.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return _dist2(a, c) < _dist2(b, c))
+	# A fila passa a ser só a da nova área (o que saiu não interessa mais).
+	_queue.clear()
+	for coord: Vector2i in pend:
+		_enqueue(coord)
 
 
-func _request(coord: Vector2i) -> void:
-	if _chunks.has(coord) or _inflight.has(coord):
+func _dist2(coord: Vector2i, c: Vector2i) -> int:
+	var d := coord - c
+	return d.x * d.x + d.y * d.y
+
+
+func _enqueue(coord: Vector2i) -> void:
+	if _inflight.has(coord) or _chunks.has(coord):
 		return
+	if not _queue.has(coord):
+		_queue.append(coord)
+
+
+## Mantém no máximo `_max_tasks` gerações rodando, tirando sempre a mais próxima.
+func _dispatch() -> void:
+	while _inflight.size() < _max_tasks and not _queue.is_empty():
+		var coord: Vector2i = _queue.pop_front()
+		if _inflight.has(coord) or _chunks.has(coord):
+			continue
+		if _cache.has(coord):
+			continue
+		_start_task(coord)
+
+
+func _start_task(coord: Vector2i) -> void:
 	_inflight[coord] = true
 	var g := _gen
 	var lib := _lib
@@ -261,11 +305,45 @@ func _mount_pending() -> void:
 			break
 		var e: Dictionary = _results.pop_front()
 		_mutex.unlock()
-		_inflight.erase(e["coord"])
-		# O jogador pode ter andado: só monta o que ainda está na cruz.
-		if _wanted(e["coord"]):
-			_mount_chunk(e["coord"], {"block": e["block"]})
+		var coord: Vector2i = e["coord"]
+		_inflight.erase(coord)
+		# Guarda no cache (mesmo que já não esteja na área: o jogador pode voltar).
+		if not _cache.has(coord):
+			_cache[coord] = e["block"]
+		# Só monta o que ainda está na área.
+		if _wanted(coord):
+			_mount_chunk(coord, {"block": e["block"]})
 		made += 1
+	# Monta direto do cache o que entrou na área e já foi gerado antes.
+	_fill_from_cache()
+	_trim_cache()
+
+
+## Monta, sem thread, os chunks da área que já estão no cache (volta a um lugar).
+func _fill_from_cache() -> void:
+	var made := 0
+	for off in CHUNK_OFFSETS:
+		if made >= MAX_PER_FRAME:
+			break
+		var coord: Vector2i = _center + off
+		if _chunks.has(coord) or _inflight.has(coord):
+			continue
+		if not _cache.has(coord):
+			continue
+		_mount_chunk(coord, {"block": _cache[coord]})
+		made += 1
+
+
+## Descarta do cache o que ficou muito longe (o Minecraft também limita a memória).
+func _trim_cache() -> void:
+	if _cache.size() < 80:
+		return
+	var keep := 70
+	var keys: Array = _cache.keys()
+	keys.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return _dist2(a, _center) > _dist2(b, _center))
+	for i in range(keys.size() - keep):
+		_cache.erase(keys[i])
 
 
 func _wanted(coord: Vector2i) -> bool:
@@ -342,7 +420,11 @@ func _mount_chunk(coord: Vector2i, data: Dictionary) -> void:
 			var id := m.get_rid()
 			if not by_mesh.has(id):
 				by_mesh[id] = {"mesh": m, "mat": _prop_material(key.x), "xforms": PackedFloat32Array()}
-			(by_mesh[id]["xforms"] as PackedFloat32Array).append_array(buf)
+			var arr: PackedFloat32Array = by_mesh[id]["xforms"]
+			var ks := _kind_scale(key.x)
+			for i in range(buf.size() / 12):
+				arr.append_array(_scaled_xform(buf, i, ks))
+			by_mesh[id]["xforms"] = arr
 			continue
 		var surf_mat: Material = m.surface_get_material(0) if m.get_surface_count() > 0 else null
 		var mid: int = surf_mat.get_rid().get_id() if surf_mat else 0
@@ -351,8 +433,14 @@ func _mount_chunk(coord: Vector2i, data: Dictionary) -> void:
 			st.begin(Mesh.PRIMITIVE_TRIANGLES)
 			static_by_mat[mid] = {"mat": surf_mat, "st": st}
 		var st2: SurfaceTool = static_by_mat[mid]["st"]
+		var ks2 := _kind_scale(key.x)
 		for i in range(buf.size() / 12):
-			st2.append_from(m, 0, _xform_at(buf, i))
+			var xf := _scaled_xform_t(buf, i, ks2)
+			st2.append_from(m, 0, xf)
+			# Pedras grandes viram montanha: empilha pedras menores em volta.
+			if key.x == LFPropMeshes.Kind.ROCK:
+				for extra: Transform3D in _rock_pile(int(xf.origin.x * 31.0 + xf.origin.z * 17.0), xf):
+					st2.append_from(m, 0, extra)
 
 	for mid in static_by_mat:
 		var grp0: Dictionary = static_by_mat[mid]
@@ -400,9 +488,14 @@ static func _prop_bodies(colliders: Array, log_colliders: Array, cliff_colliders
 	for c: Array in colliders:
 		var pos: Vector3 = c[1]
 		if c[0]:
-			_sphere_faces(rocks, pos, c[2])
+			# Pedra: esfera, com o raio do MESMO fator da malha (senão o jogador entra
+			# na pedra gigante).
+			_sphere_faces(rocks, pos, c[2] * _collide_scale(LFPropMeshes.Kind.ROCK))
 		else:
-			_prism_faces(trees, Transform3D(Basis(), pos + Vector3(0, c[3] * 0.5, 0)), c[2], c[3], false)
+			# Árvore: prisma, com raio e altura escalados como o tronco.
+			var ts := _collide_scale(LFPropMeshes.Kind.PINE)
+			_prism_faces(trees, Transform3D(Basis(), pos + Vector3(0, c[3] * ts * 0.5, 0)),
+				c[2] * ts, c[3] * ts, false)
 	for lc: Array in log_colliders:
 		_prism_faces(logs, lc[0], lc[1], lc[2])
 	for hull: PackedVector3Array in cliff_colliders:
@@ -498,6 +591,75 @@ func _measure_height(n: Node) -> float:
 	return maxf(a.size.y, 0.5)
 
 
+
+
+## Fator de escala aplicado a cada tipo de prop do gerador. O LowLand Forge planta
+## tudo em escala de "boneco"; aqui aumentamos para um mundo com árvores GIGANTES e
+## pedras grandes, como o usuário pediu.
+static func _kind_scale(kind: int) -> float:
+	var K := LFPropMeshes.Kind
+	if kind == K.PINE or kind == K.BIRCH or kind == K.BROAD \
+			or kind == K.SNOW_PINE or kind == K.WILLOW or kind == K.DEAD:
+		return 7.5          # árvores de floresta: gigantes (~9-10 m)
+	if kind == K.PALM:
+		return 5.0
+	if kind == K.CACTUS:
+		return 3.5
+	if kind == K.ROCK:
+		return 4.0          # pedras grandes
+	if kind == K.CRYSTAL:
+		return 3.2
+	return 1.0
+
+
+## Fator de escala da COLISÃO do prop, por categoria. Tem que acompanhar o visual,
+## senão o jogador atravessa a árvore (a colisão fica no tamanho antigo).
+static func _collide_scale(kind: int) -> float:
+	var K := LFPropMeshes.Kind
+	if kind == K.ROCK:
+		return 4.0
+	if kind == K.CLIFF:
+		return 1.0
+	return _kind_scale(kind)
+
+
+## Montanha de pedras: em volta de uma rocha grande, empilha pedras menores. Devolve
+## uma lista de transforms extras (já no espaço do chunk).
+static func _rock_pile(seed_val: int, base: Transform3D) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_val
+	var out: Array = []
+	if rng.randf() > 0.16:
+		return out   # só algumas rochas viram montanha
+	var n := rng.randi_range(3, 7)
+	for i in n:
+		var ang := rng.randf() * TAU
+		var dist := rng.randf_range(0.2, 0.9) * base.basis.get_scale().x * 1.4
+		var up := rng.randf_range(0.05, 0.55) * base.basis.get_scale().x
+		var s := rng.randf_range(0.35, 0.85)
+		var b := Basis(Vector3.UP, rng.randf() * TAU).scaled(base.basis.get_scale() * s)
+		out.append(Transform3D(b, base.origin + Vector3(cos(ang) * dist, up, sin(ang) * dist)))
+	return out
+
+
+## Transform de uma instância no buffer achatado (12 floats: 9 da base + 3 da posição),
+## com o fator de escala do tipo aplicado.
+static func _scaled_xform_t(buf: PackedFloat32Array, i: int, k: float) -> Transform3D:
+	var t := _xform_at(buf, i)
+	t.basis = t.basis.scaled(Vector3(k, k, k))
+	return t
+
+
+## O mesmo, no formato achatado (para o MultiMesh).
+static func _scaled_xform(buf: PackedFloat32Array, i: int, k: float) -> PackedFloat32Array:
+	var t := _scaled_xform_t(buf, i, k)
+	var b := t.basis
+	var o := t.origin
+	return PackedFloat32Array([
+		b.x.x, b.y.x, b.z.x, o.x,
+		b.x.y, b.y.y, b.z.y, o.y,
+		b.x.z, b.y.z, b.z.z, o.z,
+	])
 
 
 ## Transform de uma instância no buffer achatado (12 floats: 9 da base + 3 da posição).

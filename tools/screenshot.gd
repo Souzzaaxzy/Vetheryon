@@ -14,9 +14,9 @@ func _init() -> void:
 
 	var main: Node = load("res://src/world/main.tscn").instantiate()
 	get_root().add_child(main)
-	# A tela inicial pausa o jogo e cobre tudo: some com ela para capturar o mundo.
+	# O menu de mundos pausa o jogo e cobre tudo: some com ele para capturar o mundo.
 	paused = false
-	for n in ["StartScreen", "LoadingScreen", "PauseMenu"]:
+	for n in ["WorldMenu", "LoadingScreen", "PauseMenu"]:
 		var c := main.get_node_or_null(n)
 		if c:
 			c.visible = false
@@ -40,6 +40,22 @@ func _init() -> void:
 	if mode == "hand":
 		cam.global_position = player.global_position + Vector3(1.2, 1.6, 1.2)
 		cam.look_at(player.global_position + Vector3(0, 1.2, 0), Vector3.UP)
+	elif mode == "castle":
+		# Mira no castelo (a muralha precisa aparecer reta, não atravessada).
+		var pl = world.get("_planner")
+		var cc := Vector2.ZERO
+		var found := false
+		if pl:
+			for ca: Dictionary in pl.castles:
+				cc = ca["center"]
+				found = true
+				break
+		if not found:
+			cc = _nearest_village(world, player.global_position)
+		var cy: float = world.ground_height(cc.x, cc.y)
+		cam.global_position = Vector3(cc.x, cy + 60.0, cc.y + 150.0)
+		cam.look_at(Vector3(cc.x, cy + 5.0, cc.y), Vector3.UP)
+		print("CASTLE em ", cc)
 	elif mode == "close":
 		# Mira no nó de estrutura realmente montado mais próximo do jogador.
 		var target := _nearest_mounted(world, player.global_position)

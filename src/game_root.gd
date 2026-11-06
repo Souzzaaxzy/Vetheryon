@@ -4,10 +4,11 @@ extends Node3D
 ## inventário (hotbar + mochila).
 ##
 ## Fluxo:
-##   1. Tela inicial ("TOQUE PARA ENTRAR") — o jogo começa pausado.
-##   2. Ao tocar, aparece a tela de carregamento enquanto o mundo é gerado.
+##   1. Menu de mundos (criar/escolher) — o jogo começa pausado.
+##   2. Ao escolher um mundo, a seed dele vai para o mundo e a tela de
+##      carregamento aparece enquanto os chunks são gerados.
 ##   3. Quando o mundo fica pronto, a engrenagem e a hotbar são habilitadas.
-##   4. "Salvar e sair" grava o mundo e volta para a tela inicial.
+##   4. "Salvar e sair" grava a posição no mundo atual e volta para o menu.
 
 @export var loading_min_time: float = 0.9
 
@@ -25,7 +26,7 @@ var _inv_screen: CanvasLayer
 func _ready() -> void:
 	_world = get_node_or_null("World")
 	_player = get_node_or_null("Player")
-	_start = get_node_or_null("StartScreen")
+	_start = get_node_or_null("WorldMenu")
 	_loading = get_node_or_null("LoadingScreen")
 	_pause = get_node_or_null("PauseMenu")
 	_touch = get_node_or_null("TouchControls")
@@ -51,15 +52,18 @@ func _ready() -> void:
 	if _pause:
 		_pause.set_enabled(false)
 	if _start:
-		_start.entered.connect(_on_entered)
+		_start.world_chosen.connect(_on_world_chosen)
 	if _pause:
 		_pause.exit_requested.connect(_on_exit)
 		_pause.save_requested.connect(_on_save)
 
 
-func _on_entered() -> void:
-	# Devolve o jogador ao ponto salvo ANTES de carregar, para os chunks gerarem
-	# em volta de onde ele parou.
+## O jogador escolheu um mundo no menu: aplica a seed, devolve ao ponto salvo e
+## carrega. A seed PRECISA ir antes do mundo montar (ela decide o terreno).
+func _on_world_chosen(id: String) -> void:
+	SaveGame.current_id = id
+	if _world:
+		_world.world_seed = SaveGame.current_seed()
 	_restore_save()
 	_run_loading()
 
@@ -105,7 +109,7 @@ func _status_for(p: float) -> String:
 func _restore_save() -> void:
 	if _world == null or _player == null:
 		return
-	var pos: Variant = SaveGame.saved_player(_world.world_seed)
+	var pos: Variant = SaveGame.current_player()
 	if pos != null:
 		_player.global_position = pos
 
@@ -123,7 +127,7 @@ func _on_exit() -> void:
 func _save_world() -> void:
 	if _world == null or _player == null:
 		return
-	SaveGame.save(_world.world_seed, _player.global_position)
+	SaveGame.save_current(_player.global_position)
 
 
 func _open_backpack() -> void:

@@ -14,3 +14,8 @@ extends Resource
 ## Escala sugerida quando a entrada não traz uma (dimensionada pela porta).
 @export var default_scale: float = 1.0
 @export var faces: int = 0
+## Interior (sala com móveis) montado dentro do prédio. Nulo quando o modelo não é
+## um prédio habitável (muralha, torre, árvore...).
+@export var interior_mesh: ArrayMesh
+@export var interior_shape: ConcavePolygonShape3D
+@export var interior_offset: Vector3 = Vector3.ZERO
