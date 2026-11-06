@@ -118,10 +118,29 @@ func _on_save() -> void:
 	_save_world()
 
 
+## "Salvar e sair": grava o mundo, descarrega tudo e volta para o MENU DE MUNDOS
+## (a tela de título não aparece de novo; o jogador já entrou).
 func _on_exit() -> void:
 	_save_world()
-	get_tree().paused = false
-	get_tree().reload_current_scene()
+	_unload_world()
+	if _touch:
+		_touch.visible = false
+	if _hotbar:
+		_hotbar.set_enabled(false)
+	if _pause:
+		_pause.set_enabled(false)
+	# Traz o menu de volta já na lista de mundos, atualizada.
+	if _start:
+		_start.visible = true
+		_start.reset_to_title()
+		_start._show_menu()
+
+
+## Descarrega os chunks e as estruturas do mundo atual (o próximo mundo carrega do
+## zero, com a seed dele).
+func _unload_world() -> void:
+	if _world and _world.has_method("unload_all"):
+		_world.unload_all()
 
 
 func _save_world() -> void:

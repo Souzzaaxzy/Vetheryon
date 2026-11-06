@@ -90,6 +90,18 @@ func active_count() -> int:
 	return _active.size()
 
 
+## Desmonta tudo e esquece os cozimentos em memória (troca de mundo).
+func unload_all() -> void:
+	for i in _active:
+		var node: Node3D = _active[i]
+		if is_instance_valid(node):
+			node.queue_free()
+	_active.clear()
+	_baking.clear()
+	_bake_results.clear()
+	# Os cozimentos de disco ficam: são os mesmos por tipo, servem para todo mundo.
+
+
 func _process(_delta: float) -> void:
 	if not _ready or _player == null:
 		return

@@ -34,7 +34,9 @@ const PROPS_VIEW := 130.0
 
 @export var world_seed: int = 20261104
 @export var preset: String = "Rolling Plains"
-@export var density: float = 0.5
+## Densidade da vegetação. Menos props = menos geometria para gerar e desenhar
+## (as árvores agora são gigantes, então cada uma pesa muito mais que antes).
+@export var density: float = 0.32
 @export var player_path: NodePath
 ## Dimensiona os predios pela porta: a porta fica `door_factor` x a altura do
 ## personagem (bem maior que ele) e o predio inteiro e escalado junto, para nao
@@ -155,7 +157,10 @@ func _make_params() -> LFMapParams:
 	p.prop_density = d
 	p.tree_density = d
 	p.rock_density = d
-	p.ground_cover_density = d
+	# A vegetação rasteira (grama, flores, arbustos) é a que mais gera geometria e
+	# não tem colisão: com as árvores gigantes, dá para ser bem mais rala sem o
+	# mundo parecer vazio.
+	p.ground_cover_density = d * 0.45
 	return p
 
 
@@ -163,6 +168,24 @@ func _make_params() -> LFMapParams:
 ## resgate do void: se o jogador cair abaixo disso, é devolvido para cima.
 func ground_height(x: float, z: float) -> float:
 	return _gen.get_height(x, z)
+
+
+## Descarrega TUDO (chunks montados, fila e caches de memória) para trocar de mundo.
+## Os caches de DISCO ficam: são por seed, então cada mundo reaproveita os seus.
+func unload_all() -> void:
+	for coord: Vector2i in _chunks.keys():
+		var node: Node3D = _chunks[coord]
+		if is_instance_valid(node):
+			node.queue_free()
+	_chunks.clear()
+	_inflight.clear()
+	_queue.clear()
+	_cache.clear()
+	_mutex.lock()
+	_results.clear()
+	_mutex.unlock()
+	if _structures and _structures.has_method("unload_all"):
+		_structures.unload_all()
 
 
 func _physics_process(_delta: float) -> void:
@@ -228,6 +251,12 @@ func _dispatch() -> void:
 
 
 func _start_task(coord: Vector2i) -> void:
+	# Primeiro o cache de DISCO (chunk já gerado antes, em qualquer sessão): é o
+	# que evita a geração de 120 ms na maior parte do tempo.
+	var disk := _load_chunk_cache(coord)
+	if not disk.is_empty():
+		_cache[coord] = disk
+		return
 	_inflight[coord] = true
 	var g := _gen
 	var lib := _lib
@@ -307,9 +336,10 @@ func _mount_pending() -> void:
 		_mutex.unlock()
 		var coord: Vector2i = e["coord"]
 		_inflight.erase(coord)
-		# Guarda no cache (mesmo que já não esteja na área: o jogador pode voltar).
+		# Guarda no cache (memória + disco: o chunk gerado é reaproveitado depois).
 		if not _cache.has(coord):
 			_cache[coord] = e["block"]
+			_save_chunk_cache(coord, e["block"])
 		# Só monta o que ainda está na área.
 		if _wanted(coord):
 			_mount_chunk(coord, {"block": e["block"]})
@@ -344,6 +374,55 @@ func _trim_cache() -> void:
 		return _dist2(a, _center) > _dist2(b, _center))
 	for i in range(keys.size() - keep):
 		_cache.erase(keys[i])
+
+
+# --- cache em disco dos chunks -------------------------------------------------
+#
+# Igual ao Minecraft, que salva o chunk já gerado: como o mundo é procedural com
+# seed fixa, o mesmo chunk dá sempre o mesmo resultado. Então gerar (a parte
+# caríssima, ~120 ms) só acontece UMA vez por chunk, por mundo; depois é leitura
+# de arquivo. O cache é por seed, para não misturar mundos.
+
+const CHUNK_CACHE_DIR := "user://chunk_cache"
+## Suba ao mudar QUALQUER coisa na geração (densidade, escala, colisão), senão o
+## jogo reaproveita os chunks gerados com os parâmetros antigos.
+const CHUNK_CACHE_VERSION := 2
+
+
+func _chunk_cache_path(coord: Vector2i) -> String:
+	return "%s/%d_%d_%d_%d.var" % [CHUNK_CACHE_DIR, CHUNK_CACHE_VERSION, world_seed, coord.x, coord.y]
+
+
+## Grava o bloco em disco. Guarda só o essencial (alturas, facets e props); as
+## colisões são reconstruídas na montagem (são baratas: ~5 ms).
+func _save_chunk_cache(coord: Vector2i, block: Dictionary) -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(CHUNK_CACHE_DIR))
+	var f := FileAccess.open(_chunk_cache_path(coord), FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_var({
+		"hm": block["hm"],
+		"facets": block["facets"],
+		"mms": block["mms"],
+		"colliders": block["colliders"],
+		"log_colliders": block["log_colliders"],
+		"cliff_colliders": block["cliff_colliders"],
+	})
+	f.close()
+
+
+func _load_chunk_cache(coord: Vector2i) -> Dictionary:
+	var path := _chunk_cache_path(coord)
+	if not FileAccess.file_exists(path):
+		return {}
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return {}
+	var d: Variant = f.get_var()
+	f.close()
+	if d is Dictionary and (d as Dictionary).has("hm"):
+		return d
+	return {}
 
 
 func _wanted(coord: Vector2i) -> bool:
@@ -479,6 +558,15 @@ func _mount_chunk(coord: Vector2i, data: Dictionary) -> void:
 	_chunks[coord] = root
 
 
+## A colisão da árvore é um cilindro no TRONCO. O raio vem do próprio gerador
+## (`collide_radius` do tipo × escala do exemplar), que corresponde ao tronco real,
+## mas com um TETO: nas variantes de copa larga esse valor dobra e, com as árvores
+## gigantes, virava um muro que prendia o jogador.
+const TRUNK_MAX_RADIUS := 2.4
+## Altura do tronco sólido (m). Acima disso é copa — atravessável, como no Minecraft.
+const TRUNK_COLLIDE_HEIGHT := 8.0
+
+
 ## Mesma geometria de colisao que o LowLand Forge gera no bake: prismas de 6 lados
 ## para troncos, esferas para pedras e as cascas (hulls) das pedras de encosta.
 static func _prop_bodies(colliders: Array, log_colliders: Array, cliff_colliders: Array) -> Array[StaticBody3D]:
@@ -488,14 +576,15 @@ static func _prop_bodies(colliders: Array, log_colliders: Array, cliff_colliders
 	for c: Array in colliders:
 		var pos: Vector3 = c[1]
 		if c[0]:
-			# Pedra: esfera, com o raio do MESMO fator da malha (senão o jogador entra
-			# na pedra gigante).
+			# Pedra: esfera do tamanho real (o addon guarda o raio no mesmo campo).
 			_sphere_faces(rocks, pos, c[2] * _collide_scale(LFPropMeshes.Kind.ROCK))
 		else:
-			# Árvore: prisma, com raio e altura escalados como o tronco.
+			# Árvore: cilindro no tronco, com o raio do próprio gerador (× a escala
+			# do exemplar) limitado por TRUNK_MAX_RADIUS. A copa fica atravessável.
 			var ts := _collide_scale(LFPropMeshes.Kind.PINE)
-			_prism_faces(trees, Transform3D(Basis(), pos + Vector3(0, c[3] * ts * 0.5, 0)),
-				c[2] * ts, c[3] * ts, false)
+			var r: float = minf(c[2] * ts, TRUNK_MAX_RADIUS)
+			var h := TRUNK_COLLIDE_HEIGHT
+			_prism_faces(trees, Transform3D(Basis(), pos + Vector3(0, h * 0.5, 0)), r, h, false)
 	for lc: Array in log_colliders:
 		_prism_faces(logs, lc[0], lc[1], lc[2])
 	for hull: PackedVector3Array in cliff_colliders:

@@ -17,6 +17,9 @@ var _panel: PanelContainer          # painel de criar mundo
 var _name_edit: LineEdit
 var _status: Label
 var _chosen := false
+var _title_screen: Control          # tela "TOQUE PARA ENTRAR"
+var _menu_box: VBoxContainer        # o menu de mundos em si
+var _t := 0.0
 
 
 func _ready() -> void:
@@ -47,6 +50,96 @@ func _build() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(dim)
 
+	_build_title_screen()
+	_build_world_menu()
+	_build_create_panel()
+
+
+## Primeira tela: só o convite para entrar (a lista de mundos vem depois).
+func _build_title_screen() -> void:
+	_title_screen = Control.new()
+	_title_screen.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_title_screen.mouse_filter = Control.MOUSE_FILTER_STOP
+	_root.add_child(_title_screen)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_title_screen.add_child(center)
+
+	var col := VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", 18)
+	center.add_child(col)
+
+	var title := Label.new()
+	title.text = "VETHERYON"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 56)
+	title.add_theme_color_override("font_color", Color(1, 0.97, 0.88))
+	title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
+	title.add_theme_constant_override("shadow_offset_x", 2)
+	title.add_theme_constant_override("shadow_offset_y", 3)
+	col.add_child(title)
+
+	var hint := Label.new()
+	hint.text = "TOQUE PARA ENTRAR"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 26)
+	hint.add_theme_color_override("font_color", Color(0.98, 0.9, 0.72))
+	hint.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	hint.add_theme_constant_override("shadow_offset_x", 1)
+	hint.add_theme_constant_override("shadow_offset_y", 2)
+	col.add_child(hint)
+	_title_screen.set_meta("hint", hint)
+
+	_title_screen.gui_input.connect(_on_title_input)
+
+
+func _on_title_input(event: InputEvent) -> void:
+	var pressed := false
+	if event is InputEventScreenTouch and event.pressed:
+		pressed = true
+	elif event is InputEventMouseButton and event.pressed:
+		pressed = true
+	elif event is InputEventKey and event.pressed:
+		pressed = true
+	if pressed:
+		_show_menu()
+
+
+## Sai da tela de título e mostra a lista de mundos.
+func _show_menu() -> void:
+	if _title_screen:
+		_title_screen.visible = false
+	if _menu_box:
+		_menu_box.visible = true
+	_refresh()
+
+
+## Volta para a tela de título (usado quando o jogo volta ao menu).
+func reset_to_title() -> void:
+	_chosen = false
+	if _panel:
+		_panel.visible = false
+	if _menu_box:
+		_menu_box.visible = false
+	if _title_screen:
+		_title_screen.visible = true
+		_root.modulate.a = 1.0
+
+
+func _process(delta: float) -> void:
+	# O convite pulsa, para não parecer uma imagem parada.
+	if _title_screen == null or not _title_screen.visible:
+		return
+	_t += delta
+	var hint: Label = _title_screen.get_meta("hint")
+	if hint:
+		hint.modulate.a = 0.65 + 0.35 * (0.5 + 0.5 * sin(_t * 2.2))
+
+
+func _build_world_menu() -> void:
 	# Painel central com título, lista e botões.
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -56,23 +149,17 @@ func _build() -> void:
 	col.add_theme_constant_override("separation", 14)
 	col.custom_minimum_size = Vector2(560, 0)
 	center.add_child(col)
+	_menu_box = col
 
 	var title := Label.new()
-	title.text = "VETHERYON"
+	title.text = "SEUS MUNDOS"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 44)
+	title.add_theme_font_size_override("font_size", 34)
 	title.add_theme_color_override("font_color", Color(1, 0.97, 0.88))
 	title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
 	title.add_theme_constant_override("shadow_offset_x", 2)
 	title.add_theme_constant_override("shadow_offset_y", 3)
 	col.add_child(title)
-
-	var sub := Label.new()
-	sub.text = "Seus mundos"
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.add_theme_font_size_override("font_size", 16)
-	sub.add_theme_color_override("font_color", Color(0.85, 0.88, 0.94))
-	col.add_child(sub)
 
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(560, 300)
@@ -98,8 +185,7 @@ func _build() -> void:
 	_status.add_theme_font_size_override("font_size", 14)
 	_status.add_theme_color_override("font_color", Color(0.95, 0.75, 0.45))
 	col.add_child(_status)
-
-	_build_create_panel()
+	_menu_box.visible = false
 
 
 ## Painel de criação de mundo (nome + criar/cancelar).
